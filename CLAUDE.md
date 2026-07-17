@@ -30,5 +30,9 @@ or apparent necessity.
 6. **The overlay log is append-only.** `governance/overlay_log.csv` is append-only;
    corrections are new rows, never edits.
 
-7. **When in doubt, STOP.** If any task appears to require violating these rules,
+7. **Legacy clone is import-only.** The frozen clone at `~/vendor/legacy-engine`
+   (see `governance/LEGACY_PIN.md`) is on `PYTHONPATH` for imports only.
+   Never `pip install -e` the clone; never modify it or move its HEAD.
+
+8. **When in doubt, STOP.** If any task appears to require violating these rules,
    STOP and ask the user instead of proceeding.
