@@ -1,0 +1,25 @@
+#!/bin/sh
+# Seal enforcement (governance/SEAL.md). Installed via: git config core.hooksPath .githooks
+# Blocks: (1) any staged change to governance/SEAL.md once it exists in HEAD
+#         (2) any staged file under data/sealed/
+
+staged=$(git diff --cached --name-only)
+
+# (1) SEAL.md is immutable after its first commit. The first commit (SEAL.md not
+# yet in HEAD) is allowed; every later modification, rename, or deletion is not.
+if git rev-parse --verify HEAD >/dev/null 2>&1 && \
+   git ls-tree -r --name-only HEAD -- governance/SEAL.md | grep -qx "governance/SEAL.md"; then
+    if printf '%s\n' "$staged" | grep -qx "governance/SEAL.md"; then
+        echo "BLOCKED: governance/SEAL.md is sealed and may never be modified." >&2
+        echo "Changes to the seal require a NEW file: governance/SEAL_v2.md" >&2
+        exit 1
+    fi
+fi
+
+# (2) Sealed data must never enter the repository.
+if printf '%s\n' "$staged" | grep -q "^data/sealed/"; then
+    echo "BLOCKED: files under data/sealed/ may never be committed." >&2
+    exit 1
+fi
+
+exit 0

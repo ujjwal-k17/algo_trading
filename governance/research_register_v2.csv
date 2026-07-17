@@ -1,0 +1,2 @@
+trial_id,date,family,description,data_tier,result,notes
+INHERITED-0000,2026-07-17,ALL,Opening balance: ~51 trials inherited from the legacy research register,dev,n/a,True cumulative trial count = union of the legacy register and this register; counts never reset
