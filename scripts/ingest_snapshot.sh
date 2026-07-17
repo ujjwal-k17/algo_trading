@@ -26,6 +26,8 @@ rsync -a --ignore-existing \
     --include="open_positions_migrated_*.csv" \
     --include="daily_assessment.md" \
     --include="macro_context.json" \
+    --include="prices_eod_backup_*.csv" \
+    --include="nifty_backup_*.csv" \
     --exclude="*" \
     "$SRC/" "$DEST/"
 

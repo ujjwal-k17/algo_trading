@@ -53,7 +53,9 @@ def test_ohlc_with_rec_key_admissible_for_settlement(capsys):
 
 
 def test_inadmissible_source_rejected():
+    # data/sealed/raw/ became admissible under the RULING 3 amendment
+    # (settlement source); an arbitrary path outside the list must still fail.
     with pytest.raises(ValueError, match="inadmissible source"):
         data_gate.load_operational(
-            _rec_frame(["2026-07-01"]), "pick_date", "data/sealed/raw/2026-07-17/x.csv"
+            _rec_frame(["2026-07-01"]), "pick_date", "notebooks/scratch/x.csv"
         )

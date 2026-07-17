@@ -17,7 +17,7 @@ idempotency, paper-leg conventions, overlay-alpha join.)
 |---|---|
 | Seal commit (`governance/SEAL.md`, recorded in `governance/SEAL_COMMIT_SHA.txt`) | `b7e4224c311034ca57aa46e9ab38c46f75ce63cc` |
 | Legacy engine pin (production HEAD at clone time, `governance/LEGACY_PIN.md`) | `ee7ad13228244f4f27e3d2d839baf70897ff24fe` |
-| Workspace commits | `223f360` rules → `b7e4224` seal → `216577f` SHA record → `612b0cd` legacy pin → `ffd45eb` isolation suite → (this commit) decision closure |
+| Workspace commits | `223f360` rules → `b7e4224` seal → `216577f` SHA record → `612b0cd` legacy pin → `ffd45eb` isolation suite → `b70e928` decision closure → (this commit) settlement unblock |
 
 ## Paths
 
@@ -49,14 +49,18 @@ idempotency, paper-leg conventions, overlay-alpha join.)
 
 ## Genuinely open items
 
-1. **OHLC settlement source.** No sanctioned flat OHLC export exists (prices
-   live in the production DB, which is off-limits; the ingest scope excludes
-   generic OHLC panels by ruling). Until production exports an adjusted daily
-   OHLC file for rec symbols — or another sanctioned source is designated —
-   `paper_leg.parquet` rows stay UNSETTLED. `run_paper_leg.py --ohlc <csv>` is
-   ready for it.
-2. **NAV history.** Exists only inside the live DB (`observer.py:1075`); needs
-   a production-side flat export before it can enter the ingest scope.
-3. **T1 partial-exit check.** Paper leg uses full-exit-at-T1 (DB semantics,
+1. **OHLC coverage (the one real blocker).** OHLC backups are now IN ingest
+   scope (RULING 3 amendment) and the settlement + NAV pipelines are fully
+   wired through the Tier 1 door — but the only backup production has written
+   is a SINGLE-DAY universe snapshot (2026-06-24, before the live window;
+   `price_source=yfinance_adj`, so it is an adjusted series — assumption
+   falsified from the file) and the nifty backup is empty. Until production
+   writes a multi-day backup: `paper_leg.parquet` = 25/25 UNSETTLED (per-row
+   reasons in `unsettled_reason`), `build_nav.py` refuses with the exact
+   missing inputs (closes for 11 held symbols, 2026-06-29 → 2026-07-17).
+2. **Adjustment cross-check vs yfinance** — deferred: needs ≥1 settled trade.
+3. **Ex-date flags (RULING 4h)** — 25/25 not-evaluated; needs corporate-action
+   data alongside OHLC.
+4. **T1 partial-exit check.** Paper leg uses full-exit-at-T1 (DB semantics,
    FACT) per the residual realism ruling; if the desk actually trades the
    50%-partial the alerts describe, say so — that becomes a SOP v2 change.

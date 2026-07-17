@@ -66,6 +66,44 @@ schedule is launchd agents `com.nse.*`: 08:00 (kiterefresh; weeklydigest Sat),
   start time by ≥ 3h30m, and clears observed long *runs* too (systemcheck has
   finished as late as 23:36 by file mtimes).
 
+## 2026-07-17 — AMENDMENT to RULING 3: OHLC backups enter ingest scope
+
+**Rationale: settlement source; original exclusion was scope collateral.**
+- `prices_eod_backup_*.csv` and `nifty_backup_*.csv` are ADDED to the ingest
+  include list. They are production data outputs and the sanctioned settlement
+  source for the paper leg. The `.db`/`.sqlite` exclusion stands untouched.
+- Mechanics: snapshot OHLC under `data/sealed/raw/` is admissible to
+  `data_gate.load_operational()` **solely via the settlement join** (rows must
+  carry rec_key — the shape rule is unchanged; `data/sealed/raw/` added to the
+  admissible-source list under this amendment). ASSUMPTION: source-list
+  mechanics; the sanction itself is the amendment (FACT of the ruling).
+- ASSUMPTION (to verify): the broker OHLC backup is UNADJUSTED — checked
+  against the file and cross-checked vs an adjusted source; findings reported
+  in-session before any source switch.
+
+## 2026-07-17 — Adjustment integrity + NAV (closure findings)
+
+- FACT (from the file itself): `prices_eod_backup_20260624.csv` self-declares
+  `price_source = yfinance_adj` on all 250 rows — the backup is an ADJUSTED
+  series, falsifying the "unadjusted broker data" ASSUMPTION. No source switch
+  needed or made.
+- FACT: the backup is a SINGLE-DAY universe snapshot (250 symbols, all rows
+  2026-06-24 — before the live window starts 2026-06-29), and
+  `nifty_backup_20260624.csv` is EMPTY (header only). Settlement therefore
+  remains blocked: 0 of 25 paper-leg rows settle; every row's reason recorded
+  in `paper_leg.parquet.unsettled_reason`.
+- Cross-check of 5 settled trades vs yfinance: NOT PERFORMED — zero settled
+  trades exist to check. Deferred until first settlements.
+- RULING 4h ex-date flags: 25/25 rows carry `flag_ex_date = None`
+  (not-evaluated — no corporate-action data supplied yet), 0 flagged.
+- **NAV — DERIVED, never from the DB.** `scripts/build_nav.py` marks
+  positions at close (5-slot convention, FACT observer.py:1060-1073) and
+  REFUSES to approximate when closes are missing. Current status: refused —
+  missing daily closes for 11 held symbols across 2026-06-29 → 2026-07-17;
+  the only sanctioned OHLC is the single pre-live-window day above.
+  `data/derived/nav.parquet` will exist as soon as a multi-day adjusted OHLC
+  export enters the ingest (already in scope per the RULING 3 amendment).
+
 ## 2026-07-17 — RULING 4: SOP conventions (see SOP_OF_RECORD.md §7 for full text)
 
 - (a) Entry per clone code (FACT); fill price when unrecorded = next-session

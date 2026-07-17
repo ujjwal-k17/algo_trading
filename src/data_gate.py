@@ -30,6 +30,10 @@ _OPERATIONAL_SOURCES = (
     "data/legacy_snapshot/",
     "governance/overlay_log.csv",
     "data/derived/",
+    # AMENDMENT to RULING 3 (DECISIONS.md): snapshot OHLC backups are the
+    # sanctioned settlement source; admissible solely via the settlement
+    # join — the rec_key shape rule below still applies.
+    "data/sealed/raw/",
 )
 
 _TIER1_NOTICE = (
