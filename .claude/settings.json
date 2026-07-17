@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "deny": [
+      "Write(//Users/ujjwalkejriwal/Desktop/AI Apps/NSE_Stock_Picks/**)",
+      "Edit(//Users/ujjwalkejriwal/Desktop/AI Apps/NSE_Stock_Picks/**)",
+      "MultiEdit(//Users/ujjwalkejriwal/Desktop/AI Apps/NSE_Stock_Picks/**)",
+      "NotebookEdit(//Users/ujjwalkejriwal/Desktop/AI Apps/NSE_Stock_Picks/**)"
+    ]
+  }
+}
