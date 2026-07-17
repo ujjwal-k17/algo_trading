@@ -8,8 +8,9 @@ Snapshot of everything that exists, as of 2026-07-17 (post decision-closure).
 cd ~/alpha-research && .venv/bin/python -m pytest tests/ -v
 ```
 
-(34 tests: isolation, seal hook, both gate doors, overlay shell, ingest
-idempotency, paper-leg conventions, overlay-alpha join.)
+(38 tests: isolation, seal hook, both gate doors, overlay shell, ingest
+idempotency, paper-leg conventions incl. dividend credits, overlay-alpha join
++ fill reconciliation.)
 
 ## SHAs
 
@@ -17,7 +18,7 @@ idempotency, paper-leg conventions, overlay-alpha join.)
 |---|---|
 | Seal commit (`governance/SEAL.md`, recorded in `governance/SEAL_COMMIT_SHA.txt`) | `b7e4224c311034ca57aa46e9ab38c46f75ce63cc` |
 | Legacy engine pin (production HEAD at clone time, `governance/LEGACY_PIN.md`) | `ee7ad13228244f4f27e3d2d839baf70897ff24fe` |
-| Workspace commits | `223f360` rules → `b7e4224` seal → `216577f` SHA record → `612b0cd` legacy pin → `ffd45eb` isolation suite → `b70e928` decision closure → (this commit) settlement unblock |
+| Workspace commits | `223f360` rules → `b7e4224` seal → `216577f` SHA record → `612b0cd` legacy pin → `ffd45eb` isolation suite → `b70e928` decision closure → `5da00b9` settlement unblock → (this commit) independent OHLC + first settled batch |
 
 ## Paths
 
@@ -29,7 +30,9 @@ idempotency, paper-leg conventions, overlay-alpha join.)
 | `data/legacy_snapshot/` | Tier 1 snapshots from the FROZEN CLONE (gitignored): `trades_log_ee7ad13.csv` (ledger, 25 picks, first date 2026-06-29), `recs/` (23 rec CSVs) |
 | `data/sealed/raw/YYYY-MM-DD/` | nightly production-output snapshots (gitignored + hook-blocked); first snapshot 2026-07-17, 84 files |
 | `data/workspace/` | gated pre-cutoff parquet from `scripts/build_workspace.py` — currently 0 rows by design (all operational data is post-cutoff) |
-| `data/derived/paper_leg.parquet` | paper-leg settlements (gitignored); 25 recs, all UNSETTLED pending an OHLC source |
+| `data/market/ohlc/`, `data/market/actions/` | independent UNADJUSTED yfinance fetches (gitignored), ledger symbols only, dated parquet, idempotent; refreshed nightly by the ingest agent |
+| `data/derived/paper_leg.parquet` | paper-leg settlements (gitignored); **25/25 SETTLED** (9 TIME, 7 SL, 6 T1, 2 T1-gap, 1 SL-gap; net +5.18R; 1 dividend credit) |
+| `data/derived/nav.parquet` | DERIVED daily NAV (gitignored): 15 marks 2026-06-29→07-17, unadjusted closes + dividend accrual, −0.70% |
 | `~/Library/LaunchAgents/com.alpha.ingest.plist` | nightly ingest at **01:00** (installed + loaded; source copy in `scripts/`) |
 | `.venv` | python 3.14, pandas 3.0.3, pytest 9.1.1, pyarrow 25.0.0 |
 
@@ -49,18 +52,16 @@ idempotency, paper-leg conventions, overlay-alpha join.)
 
 ## Genuinely open items
 
-1. **OHLC coverage (the one real blocker).** OHLC backups are now IN ingest
-   scope (RULING 3 amendment) and the settlement + NAV pipelines are fully
-   wired through the Tier 1 door — but the only backup production has written
-   is a SINGLE-DAY universe snapshot (2026-06-24, before the live window;
-   `price_source=yfinance_adj`, so it is an adjusted series — assumption
-   falsified from the file) and the nifty backup is empty. Until production
-   writes a multi-day backup: `paper_leg.parquet` = 25/25 UNSETTLED (per-row
-   reasons in `unsettled_reason`), `build_nav.py` refuses with the exact
-   missing inputs (closes for 11 held symbols, 2026-06-29 → 2026-07-17).
-2. **Adjustment cross-check vs yfinance** — deferred: needs ≥1 settled trade.
-3. **Ex-date flags (RULING 4h)** — 25/25 not-evaluated; needs corporate-action
-   data alongside OHLC.
-4. **T1 partial-exit check.** Paper leg uses full-exit-at-T1 (DB semantics,
-   FACT) per the residual realism ruling; if the desk actually trades the
-   50%-partial the alerts describe, say so — that becomes a SOP v2 change.
+1. **Fill reconciliation needs fills.** The exit-price reconciliation vs
+   trades_log (the only yfinance-independent check) is wired into
+   `weekly_summary()`, but production's trades_log has no completed exits with
+   prices yet, and the overlay log has no EXECUTE rows — it activates as both
+   accumulate. Entry-side reconciliation ran at the settlement gate: 11
+   entered trades, mean +0.33%, range −0.65%…+1.58% (ledger records rec-close,
+   paper uses next-open; three exact matches were open-fills).
+2. **T1 partial-exit check** (standing): paper leg uses full-exit-at-T1 (DB
+   semantics FACT); flag if the desk trades the 50%-partial the alerts
+   describe.
+3. **Overlay log is still empty** — start logging decisions with
+   `overlay '<rec_key>' <DECISION> <size> <reason>` to give overlay-alpha
+   something to grade.

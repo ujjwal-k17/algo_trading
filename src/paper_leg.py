@@ -65,14 +65,22 @@ def resolve_entry(rec: dict, ohlc: pd.DataFrame) -> Optional[dict]:
     }
 
 
-def settle(rec: dict, ohlc: pd.DataFrame) -> dict:
+def settle(rec: dict, ohlc: pd.DataFrame, dividends: pd.DataFrame | None = None) -> dict:
     """Settle one entered rec against subsequent daily OHLC.
 
     Args:
         rec: dict with entry_date, entry_price, stop_loss, t1, and optionally
             t2, rec_key, flags from resolve_entry().
         ohlc: DataFrame with columns date/open/high/low/close — the symbol's
-            ADJUSTED daily sessions, ascending; must include entry_date onward.
+            UNADJUSTED daily sessions (amended RULING 4h: level comparisons
+            replicate exit_manager's actual check against traded prices; rec
+            levels are never rescaled), ascending; must include entry_date
+            onward.
+        dividends: optional DataFrame with ex_date/dividend for the symbol.
+            Cash dividends whose ex-date falls inside the holding window
+            (entered before ex-date, still held on it) are CREDITED to the
+            trade's R (amended RULING 4h); flag_ex_date is the credit marker
+            (None = actions data unavailable, not evaluated).
 
     Returns:
         dict: rec_key, entry_date, entry_price, exit_date, exit_price,
@@ -100,11 +108,12 @@ def settle(rec: dict, ohlc: pd.DataFrame) -> dict:
         "exit_price": None,
         "r_multiple": None,
         "exit_rule": "UNSETTLED",
+        "dividend_credit": 0.0,
         "sessions_held": 0,
         "flag_ambiguous_same_bar": False,
         "flag_halt_carry": bool(rec.get("flag_halt_carry", False)),
         "flag_entry_assumed": bool(rec.get("flag_entry_assumed", False)),
-        "flag_ex_date": rec.get("flag_ex_date"),  # None = not evaluated (RULING 4h)
+        "flag_ex_date": None,  # None = actions data unavailable (amended RULING 4h)
     }
 
     bars = ohlc.loc[pd.to_datetime(ohlc["date"]) >= entry_date].reset_index(drop=True)
@@ -112,14 +121,24 @@ def settle(rec: dict, ohlc: pd.DataFrame) -> dict:
         return base
 
     def _exit(row, price: float, rule: str, session: int, ambiguous: bool = False) -> dict:
+        exit_date = pd.Timestamp(row["date"])
+        credit = 0.0
+        flag_ex = None
+        if dividends is not None:
+            ex = pd.to_datetime(dividends["ex_date"])
+            in_window = (ex > entry_date) & (ex <= exit_date)
+            credit = float(dividends.loc[in_window, "dividend"].sum())
+            flag_ex = bool(in_window.any())
         return {
             **base,
-            "exit_date": pd.Timestamp(row["date"]),
+            "exit_date": exit_date,
             "exit_price": float(price),
-            "r_multiple": round((float(price) - entry) / risk, 4) if risk else None,
+            "r_multiple": round((float(price) - entry + credit) / risk, 4) if risk else None,
+            "dividend_credit": credit,
             "exit_rule": rule,
             "sessions_held": session,
             "flag_ambiguous_same_bar": ambiguous,
+            "flag_ex_date": flag_ex,
         }
 
     for i, row in bars.iterrows():

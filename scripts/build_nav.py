@@ -60,6 +60,13 @@ def main() -> None:
               "data/sealed/raw/ via the nightly ingest (RULING 3 amendment already scopes it).")
         sys.exit(1)
 
+    # Dividend accrual (amended RULING 4h): unadjusted closes understate total
+    # return past an ex-date; accrue cash dividends for held positions.
+    actions_paths = sorted((REPO / "data" / "market" / "actions").glob("actions_*.parquet"))
+    divs = pd.read_parquet(actions_paths[-1]) if actions_paths else pd.DataFrame(
+        columns=["symbol", "ex_date", "dividend"])
+    divs["ex_date"] = pd.to_datetime(divs["ex_date"]) if len(divs) else divs["ex_date"]
+
     sessions = sorted({d for g in coverage.values() for d in g["date"]})
     rows = []
     for day in sessions:
@@ -77,7 +84,12 @@ def main() -> None:
                 sys.exit(1)
             close = float(sym.loc[sym["date"] == day, "close"].iloc[0])
             entry = float(p["entry_price"])
-            mtm += SLOT * (close / entry)
+            held_divs = divs.loc[
+                (divs["symbol"] == p["symbol"])
+                & (divs["ex_date"] > p["pick_date"]) & (divs["ex_date"] <= day),
+                "dividend",
+            ].sum() if len(divs) else 0.0
+            mtm += SLOT * ((close + float(held_divs)) / entry)
             n_held += 1
         rows.append({"date": day, "n_held": n_held,
                      "nav": BOOK + mtm - n_held * SLOT})

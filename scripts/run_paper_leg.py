@@ -32,12 +32,25 @@ OUT = REPO / "data" / "derived" / "paper_leg.parquet"
 
 
 def _latest_ohlc_snapshot() -> str | None:
-    """Newest prices_eod_backup_*.csv across raw snapshot days (RULING 3 amendment)."""
+    """Newest sanctioned OHLC: data/market fetch first (amended RULING 2),
+    else prices_eod_backup_*.csv from raw snapshots (RULING 3 amendment)."""
+    market = sorted((REPO / "data" / "market" / "ohlc").glob("ohlc_*.parquet"))
+    if market:
+        return str(market[-1])
     raw_root = REPO / "data" / "sealed" / "raw"
     if not raw_root.is_dir():
         return None
     candidates = sorted(raw_root.glob("*/prices_eod_backup_*.csv"))
     return str(candidates[-1]) if candidates else None
+
+
+def _latest_actions() -> str | None:
+    acts = sorted((REPO / "data" / "market" / "actions").glob("actions_*.parquet"))
+    return str(acts[-1]) if acts else None
+
+
+def _read_any(path: str) -> pd.DataFrame:
+    return pd.read_parquet(path) if path.endswith(".parquet") else pd.read_csv(path)
 
 
 def load_settlement_ohlc(path: str, ledger: pd.DataFrame) -> dict[str, pd.DataFrame]:
@@ -47,7 +60,7 @@ def load_settlement_ohlc(path: str, ledger: pd.DataFrame) -> dict[str, pd.DataFr
     with the rec_keys it settles (rec_key-joinable shape) before passing
     data_gate.load_operational() — a generic panel would be rejected.
     """
-    panel = pd.read_csv(path)
+    panel = _read_any(path)
     panel["date"] = pd.to_datetime(panel["date"])
     panel = panel.loc[panel["date"] >= data_gate.LIVE_WINDOW_START,
                       ["symbol", "date", "open", "high", "low", "close"]]
@@ -80,6 +93,37 @@ def main() -> None:
         if ohlc_by_symbol:
             ohlc_max_date = max(g["date"].max() for g in ohlc_by_symbol.values())
 
+    actions_path = _latest_actions()
+    div_by_symbol: dict[str, pd.DataFrame] = {}
+    if actions_path:
+        acts = pd.read_parquet(actions_path)
+        div_by_symbol = {s: g for s, g in acts.groupby("symbol")}
+
+    # ── Settlement gate (Option 1 ruling): reconcile paper-leg entry prices
+    # (next-session open, unadjusted) vs the fills recorded in trades_log for
+    # entered trades, BEFORE writing paper_leg.parquet.
+    entered = ledger.loc[ledger["exit_reason"] != "AUTO_EXPIRED_5_SESSIONS"]
+    divs = []
+    for _, r in entered.iterrows():
+        ohlc = ohlc_by_symbol.get(r["symbol"])
+        if ohlc is None:
+            continue
+        e = paper_leg.resolve_entry({"pick_date": r["pick_date"]}, ohlc)
+        if e is None:
+            continue
+        pct = (e["entry_price"] - float(r["entry_price"])) / float(r["entry_price"]) * 100
+        divs.append({"rec_key": r["rec_key"], "ledger_fill": float(r["entry_price"]),
+                     "paper_entry": e["entry_price"], "pct": pct})
+    if divs:
+        d = pd.DataFrame(divs)
+        print(f"[gate] entry reconciliation, {len(d)} entered trades: "
+              f"mean {d.pct.mean():+.2f}% | median {d.pct.median():+.2f}% | "
+              f"min {d.pct.min():+.2f}% | max {d.pct.max():+.2f}%")
+        for _, x in d.iterrows():
+            print(f"  {x.rec_key}: ledger {x.ledger_fill:.2f} vs paper open {x.paper_entry:.2f} ({x.pct:+.2f}%)")
+    else:
+        print("[gate] entry reconciliation: no entered trades with OHLC coverage")
+
     rows = []
     for _, r in ledger.iterrows():
         rec = {
@@ -103,7 +147,9 @@ def main() -> None:
                     f"(coverage ends {ohlc['date'].max().date()})"
                 )
             else:
-                result = paper_leg.settle({**rec, **entry}, ohlc)
+                result = paper_leg.settle(
+                    {**rec, **entry}, ohlc, dividends=div_by_symbol.get(r["symbol"])
+                )
                 if result["exit_rule"] == "UNSETTLED":
                     reason = (
                         f"position still open at end of OHLC coverage "
@@ -113,7 +159,7 @@ def main() -> None:
             result = {
                 "rec_key": rec["rec_key"], "entry_date": None, "entry_price": None,
                 "exit_date": None, "exit_price": None, "r_multiple": None,
-                "exit_rule": "UNSETTLED", "sessions_held": 0,
+                "dividend_credit": 0.0, "exit_rule": "UNSETTLED", "sessions_held": 0,
                 "flag_ambiguous_same_bar": False, "flag_halt_carry": False,
                 "flag_entry_assumed": False, "flag_ex_date": None,
             }

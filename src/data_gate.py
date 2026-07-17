@@ -34,6 +34,9 @@ _OPERATIONAL_SOURCES = (
     # sanctioned settlement source; admissible solely via the settlement
     # join — the rec_key shape rule below still applies.
     "data/sealed/raw/",
+    # AMENDMENT to RULING 2 (Option 1 ruling): independent yfinance fetches —
+    # unadjusted OHLC + corporate actions; same shape rules apply.
+    "data/market/",
 )
 
 _TIER1_NOTICE = (

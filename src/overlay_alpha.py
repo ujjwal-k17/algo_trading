@@ -55,7 +55,30 @@ def join_overlay(paper: pd.DataFrame, overlay: pd.DataFrame) -> pd.DataFrame:
     return joined
 
 
-def weekly_summary(joined: pd.DataFrame) -> pd.DataFrame:
+def reconcile_fills(joined: pd.DataFrame, ledger: pd.DataFrame) -> pd.DataFrame:
+    """Reconcile paper-leg exit prices vs actual fills recorded in trades_log,
+    for EXECUTED overlay trades only. This is the only settlement check
+    independent of yfinance (production prices from yfinance too).
+
+    Returns per-trade rows with pct divergence; empty if no executed trade has
+    an actual exit fill recorded yet.
+    """
+    executed = joined.loc[joined["decision"] == "EXECUTE"]
+    fills = ledger.loc[ledger["exit_price"].notna(), ["rec_key", "exit_price"]].rename(
+        columns={"exit_price": "actual_exit"}
+    )
+    rec = executed.merge(fills, on="rec_key", how="inner")
+    if rec.empty:
+        return pd.DataFrame(columns=["rec_key", "paper_exit", "actual_exit", "pct_divergence"])
+    rec["pct_divergence"] = (
+        (rec["exit_price"] - rec["actual_exit"]) / rec["actual_exit"] * 100
+    )
+    return rec[["rec_key", "exit_price", "actual_exit", "pct_divergence"]].rename(
+        columns={"exit_price": "paper_exit"}
+    )
+
+
+def weekly_summary(joined: pd.DataFrame, ledger: pd.DataFrame | None = None) -> pd.DataFrame:
     """Weekly overlay-vs-paper summary. Descriptive only — no significance
     claims; RULING 4b: rows are emitted for all trades and for the subset
     excluding flag_ambiguous_same_bar trades."""
@@ -80,4 +103,15 @@ def weekly_summary(joined: pd.DataFrame) -> pd.DataFrame:
     full = _agg(settled, "all")
     clean = settled.loc[~settled["flag_ambiguous_same_bar"].fillna(False)]
     parts = [full] + ([_agg(clean, "ex_ambiguous")] if not clean.empty else [])
-    return pd.concat(parts, ignore_index=True).sort_values(["week", "scope"]).reset_index(drop=True)
+    out = pd.concat(parts, ignore_index=True).sort_values(["week", "scope"]).reset_index(drop=True)
+
+    if ledger is not None:
+        rec = reconcile_fills(joined, ledger)
+        if rec.empty:
+            print("[reconcile] no executed trades with recorded exit fills yet")
+        else:
+            d = rec["pct_divergence"]
+            print(f"[reconcile] paper vs actual exits, {len(rec)} executed trades: "
+                  f"mean {d.mean():+.2f}% | median {d.median():+.2f}% | "
+                  f"min {d.min():+.2f}% | max {d.max():+.2f}%")
+    return out

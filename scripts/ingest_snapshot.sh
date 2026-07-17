@@ -32,3 +32,10 @@ rsync -a --ignore-existing \
     "$SRC/" "$DEST/"
 
 echo "[ingest] $(ls "$DEST" | wc -l | tr -d ' ') files in $DEST"
+
+# Independent OHLC + actions fetch (amended RULING 2) — after the rsync step.
+# INGEST_SKIP_FETCH=1 skips it (tests exercise the rsync stage in isolation).
+if [ -z "${INGEST_SKIP_FETCH:-}" ] && [ -n "${HOME:-}" ]; then
+    "$HOME/alpha-research/.venv/bin/python" "$HOME/alpha-research/src/fetch_ohlc.py" \
+        || echo "[ingest] WARNING: OHLC fetch failed (rsync snapshot unaffected)"
+fi

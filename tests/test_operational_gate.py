@@ -52,6 +52,16 @@ def test_ohlc_with_rec_key_admissible_for_settlement(capsys):
     assert len(out) == 1
 
 
+def test_market_source_admissible_with_settlement_shape(capsys):
+    # RULING 2 amendment: data/market/ is admissible; shape rule still applies.
+    joined = pd.DataFrame(
+        {"rec_key": ["2026-07-01|X|1"], "date": ["2026-07-02"], "open": [1.0],
+         "high": [1.0], "low": [1.0], "close": [1.0]}
+    )
+    out = data_gate.load_operational(joined, "date", "data/market/ohlc/ohlc_2026-07-17.parquet")
+    assert len(out) == 1
+
+
 def test_inadmissible_source_rejected():
     # data/sealed/raw/ became admissible under the RULING 3 amendment
     # (settlement source); an arbitrary path outside the list must still fail.

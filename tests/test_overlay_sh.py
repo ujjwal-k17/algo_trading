@@ -43,7 +43,7 @@ def test_ingest_idempotent_per_day(tmp_path):
     dest_root = tmp_path / "raw"
     env = {
         "INGEST_SRC": str(src), "INGEST_DEST_ROOT": str(dest_root),
-        "INGEST_DAY": "2026-07-17", "PATH": "/usr/bin:/bin",
+        "INGEST_DAY": "2026-07-17", "PATH": "/usr/bin:/bin", "INGEST_SKIP_FETCH": "1",
     }
     script = str(REPO / "scripts" / "ingest_snapshot.sh")
     for _ in range(2):  # second run must be a no-op, not an error or overwrite

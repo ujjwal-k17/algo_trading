@@ -81,6 +81,31 @@ schedule is launchd agents `com.nse.*`: 08:00 (kiterefresh; weeklydigest Sat),
   against the file and cross-checked vs an adjusted source; findings reported
   in-session before any source switch.
 
+## 2026-07-17 — AMENDMENT to RULING 4h + RULING 2 (Option 1 ruling, settlement basis)
+
+Context (FACT): validation of yfinance vs production's 2026-06-24 backup —
+250/250 fetched, 200 exact (≤0.001%), 50 divergent >0.05% with IDENTICAL
+diffs across all four OHLC fields (uniform rescale = adjustment-basis drift
+from ex-dates after 2026-06-24, not data error). Source identity established.
+
+- **Ruling h AMENDED — unadjusted prices for all level comparisons.**
+  Fetch with `auto_adjust=False`. Rationale: realism principle — replicates
+  `exit_manager.py`'s actual check, which compares fixed rec levels against
+  that day's actual traded prices (no future adjustments exist at check time).
+  Rec levels stay exactly as recorded — no rescaling.
+- Cash dividends with ex-date inside a holding window are CREDITED to that
+  trade's P&L/R (holder entered before ex-date and still held on it).
+  `flag_ex_date` is retained as the dividend-credit marker (True = credited,
+  False = evaluated & none, None = actions data unavailable).
+- NAV: unadjusted closes + dividend accrual, same basis.
+- Adjusted-basis re-validation of 2026-06-24 SKIPPED per ruling; the
+  settlement gate instead reconciles paper-leg entry prices vs the fills
+  recorded in trades_log for entered trades, reported before paper_leg.parquet
+  is written.
+- **RULING 2 AMENDED:** `data/market/` (independent yfinance fetches: `ohlc/`,
+  `actions/`) added to `load_operational()`'s admissible sources — same shape
+  rules (settlement joins on rec keys; generic research panels still rejected).
+
 ## 2026-07-17 — Adjustment integrity + NAV (closure findings)
 
 - FACT (from the file itself): `prices_eod_backup_20260624.csv` self-declares

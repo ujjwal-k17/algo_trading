@@ -5,3 +5,4 @@ __pycache__/
 data/sealed/
 data/legacy_snapshot/
 data/derived/
+data/market/

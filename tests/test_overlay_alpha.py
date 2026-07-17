@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 import overlay_alpha
@@ -62,3 +63,17 @@ def test_weekly_summary_reports_all_and_ex_ambiguous():
     assert wk[wk.scope == "all"].n_trades.iloc[0] == 1
     # no significance columns by design
     assert not any("p_value" in c or "t_stat" in c for c in summary.columns)
+
+
+def test_reconcile_fills_executed_only_with_divergence():
+    ov = _overlay([
+        ("2026-07-01 09:30:00", "2026-07-01|AAA|1", "EXECUTE", 1, "take"),
+        ("2026-07-01 09:31:00", "2026-07-01|BBB|1", "VETO", 0, "skip"),
+    ])
+    paper = PAPER.assign(exit_price=[110.0, 95.0, 108.0])
+    ledger = pd.DataFrame({"rec_key": ["2026-07-01|AAA|1", "2026-07-01|BBB|1"],
+                           "exit_price": [109.45, 95.0]})
+    import overlay_alpha
+    rec = overlay_alpha.reconcile_fills(overlay_alpha.join_overlay(paper, ov), ledger)
+    assert len(rec) == 1  # veto excluded
+    assert rec.iloc[0]["pct_divergence"] == pytest.approx(0.5025, abs=1e-3)

@@ -95,3 +95,17 @@ def test_halt_carry_flagged_on_entry():  # SOP §7.7 (RULING 4f)
 def test_unsettled_when_data_runs_out():
     out = paper_leg.settle(REC, _ohlc([(100, 104, 98, 101)] * 3))
     assert out["exit_rule"] == "UNSETTLED" and out["sessions_held"] == 3
+
+
+def test_dividend_credit_and_ex_date_flag():  # amended RULING 4h (Option 1 ruling)
+    divs = pd.DataFrame({"ex_date": [pd.Timestamp("2026-07-02")], "dividend": [2.5]})
+    flat = [(100, 104, 98, 101)] * 5
+    out = paper_leg.settle(REC, _ohlc(flat), dividends=divs)
+    assert out["flag_ex_date"] is True and out["dividend_credit"] == 2.5
+    assert out["r_multiple"] == pytest.approx((101 - 100 + 2.5) / 5)
+
+
+def test_ex_date_flag_false_when_evaluated_and_none_in_window():
+    divs = pd.DataFrame({"ex_date": [pd.Timestamp("2026-09-01")], "dividend": [2.5]})
+    out = paper_leg.settle(REC, _ohlc([(100, 112, 99, 108)]), dividends=divs)
+    assert out["flag_ex_date"] is False and out["dividend_credit"] == 0.0
