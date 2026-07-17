@@ -1,47 +1,62 @@
 # SETUP OF RECORD — alpha-research workspace
 
-Snapshot of everything that exists, as of 2026-07-17.
+Snapshot of everything that exists, as of 2026-07-17 (post decision-closure).
 
 **Re-verify anytime:**
 
 ```sh
-cd ~/alpha-research && .venv/bin/python -m pytest tests/test_isolation.py -v
+cd ~/alpha-research && .venv/bin/python -m pytest tests/ -v
 ```
+
+(34 tests: isolation, seal hook, both gate doors, overlay shell, ingest
+idempotency, paper-leg conventions, overlay-alpha join.)
 
 ## SHAs
 
 | What | SHA |
 |---|---|
-| Seal commit (`governance/SEAL.md` sealed here, recorded in `governance/SEAL_COMMIT_SHA.txt`) | `b7e4224c311034ca57aa46e9ab38c46f75ce63cc` |
+| Seal commit (`governance/SEAL.md`, recorded in `governance/SEAL_COMMIT_SHA.txt`) | `b7e4224c311034ca57aa46e9ab38c46f75ce63cc` |
 | Legacy engine pin (production HEAD at clone time, `governance/LEGACY_PIN.md`) | `ee7ad13228244f4f27e3d2d839baf70897ff24fe` |
-| Workspace commits | `223f360` rules+deny-list → `b7e4224` seal → `216577f` seal SHA record → `612b0cd` legacy pin |
+| Workspace commits | `223f360` rules → `b7e4224` seal → `216577f` SHA record → `612b0cd` legacy pin → `ffd45eb` isolation suite → (this commit) decision closure |
 
 ## Paths
 
 | Path | What it is |
 |---|---|
-| `~/alpha-research` | this repo (git, hooks at `.githooks/`, activated via `git config core.hooksPath .githooks` — required once per fresh clone) |
-| `/Users/ujjwalkejriwal/Desktop/AI Apps/NSE_Stock_Picks` | LIVE production — off-limits (CLAUDE.md rule 1; `.claude/settings.json` deny-list blocks Write/Edit/NotebookEdit) |
-| `~/vendor/legacy-engine` | frozen clone, detached at `ee7ad13`, `chmod -R a-w`, cloned `--no-hardlinks`; import-only via PYTHONPATH in `.venv/bin/activate` |
-| `~/alpha-research/data/legacy_snapshot/trades_log_ee7ad13.csv` | fills snapshot copied from the frozen clone (gitignored) |
-| `~/alpha-research/data/sealed/` | post-cutoff raw data (gitignored + pre-commit-blocked; populated by future ingest) |
-| `~/alpha-research/data/workspace/` | NOT YET BUILT — gated parquet output of future `scripts/build_workspace.py` |
-| `~/alpha-research/.venv` | python 3.14, pandas 3.0.3, pytest 9.1.1, pyarrow 25.0.0 |
+| `~/alpha-research` | this repo (hooks: `git config core.hooksPath .githooks`, once per fresh clone) |
+| `/Users/ujjwalkejriwal/Desktop/AI Apps/NSE_Stock_Picks` | LIVE production — off-limits (CLAUDE.md rule 1 + settings deny-list) |
+| `~/vendor/legacy-engine` | frozen clone at `ee7ad13`, `chmod -R a-w`, no hardlinks; import-only via PYTHONPATH |
+| `data/legacy_snapshot/` | Tier 1 snapshots from the FROZEN CLONE (gitignored): `trades_log_ee7ad13.csv` (ledger, 25 picks, first date 2026-06-29), `recs/` (23 rec CSVs) |
+| `data/sealed/raw/YYYY-MM-DD/` | nightly production-output snapshots (gitignored + hook-blocked); first snapshot 2026-07-17, 84 files |
+| `data/workspace/` | gated pre-cutoff parquet from `scripts/build_workspace.py` — currently 0 rows by design (all operational data is post-cutoff) |
+| `data/derived/paper_leg.parquet` | paper-leg settlements (gitignored); 25 recs, all UNSETTLED pending an OHLC source |
+| `~/Library/LaunchAgents/com.alpha.ingest.plist` | nightly ingest at **01:00** (installed + loaded; source copy in `scripts/`) |
+| `.venv` | python 3.14, pandas 3.0.3, pytest 9.1.1, pyarrow 25.0.0 |
 
 ## Governance artifacts
 
-- `CLAUDE.md` — 8 binding rules (production isolation, snapshot-only ledger, no broker calls, data-gate-only access, seal immutability, append-only overlay log, import-only clone, stop-and-ask).
-- `governance/SEAL.md` — sealed range 2024-07-17 → future; one pre-registered final test per family; immutable (pre-commit enforced, `tests/test_isolation.py::test_seal_commit_sha_matches_git_history` verifies history).
-- `governance/research_register_v2.csv` — trial register; opening balance ~51 legacy trials (`INHERITED-0000`).
-- `governance/overlay_log.csv` — append-only, exactly `ts_local,rec_key,decision,executed_size,reason`; decisions ∈ {EXECUTE, VETO, REDUCE}; header only so far.
-- `governance/LEGACY_PIN.md` — clone pin record.
-- `governance/SOP_OF_RECORD.md` — DRAFT derived SOP (uncommitted pending open-question answers).
-- `src/data_gate.py` — the only sanctioned data door; strips rows ≥ 2024-07-17 unless `FINAL_TEST=1` (loud burn warning).
-- `.githooks/pre-commit` — blocks SEAL.md edits post-seal and any `data/sealed/` commit.
-- Tests: `tests/test_data_gate.py`, `tests/test_seal_hook.py`, `tests/test_isolation.py`.
+- `CLAUDE.md` — 8 binding rules.
+- `governance/SEAL.md` (immutable) + `governance/SEAL_COMPANION.md` (Tier 1 look-don't-tune addendum; live window starts **2026-06-29**).
+- `governance/DECISIONS.md` — RULINGS 1–4 with FACT/ASSUMPTION tags.
+- `governance/SOP_OF_RECORD.md` — **CONFIRMED**; rules cited to clone code, §7 resolutions, §8 realism principle.
+- `governance/research_register_v2.csv` — ~51 inherited trials (`INHERITED-0000`).
+- `governance/overlay_log.csv` — append-only 5-column log; `governance/README_overlay.md` — rec_key `data_date|SYMBOL|seq` + correction convention.
+- `governance/LEGACY_PIN.md`, `governance/SEAL_COMMIT_SHA.txt`.
+- `src/data_gate.py` — two doors: `load()` (research, strips ≥ 2024-07-17) and `load_operational()` (Tier 1, ≥ 2026-06-29, source+shape validated).
+- `src/paper_leg.py` (pure SOP settlement), `src/overlay_alpha.py` (join + weekly summary, all/ex-ambiguous scopes).
+- `scripts/`: `overlay.sh`, `ingest_snapshot.sh`, `build_workspace.py`, `run_paper_leg.py`, `com.alpha.ingest.plist`.
+- `.githooks/pre-commit` — SEAL.md immutability + `data/sealed/` block.
 
-## Pending (awaiting user decisions)
+## Genuinely open items
 
-1. Overlay `rec_key` confirmation (proposed `data_date|generated_date|symbol`) → then `scripts/overlay.sh`, `governance/README_overlay.md`, overlay pytest.
-2. Snapshot ingest: safe-to-copy markup + legacy cron times → then `scripts/ingest_snapshot.sh`, `scripts/build_workspace.py`, launchd plist, tests.
-3. Paper-leg engine: answers to the 9 open questions in `governance/SOP_OF_RECORD.md` §7 (incl. the operational-data-tier governance ruling).
+1. **OHLC settlement source.** No sanctioned flat OHLC export exists (prices
+   live in the production DB, which is off-limits; the ingest scope excludes
+   generic OHLC panels by ruling). Until production exports an adjusted daily
+   OHLC file for rec symbols — or another sanctioned source is designated —
+   `paper_leg.parquet` rows stay UNSETTLED. `run_paper_leg.py --ohlc <csv>` is
+   ready for it.
+2. **NAV history.** Exists only inside the live DB (`observer.py:1075`); needs
+   a production-side flat export before it can enter the ingest scope.
+3. **T1 partial-exit check.** Paper leg uses full-exit-at-T1 (DB semantics,
+   FACT) per the residual realism ruling; if the desk actually trades the
+   50%-partial the alerts describe, say so — that becomes a SOP v2 change.

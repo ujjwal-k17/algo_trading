@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.alpha.ingest</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/bin/sh</string>
+		<string>/Users/ujjwalkejriwal/alpha-research/scripts/ingest_snapshot.sh</string>
+	</array>
+	<!-- 01:00 IST: >= 3h30m clear of every com.nse.* legacy start time
+	     (earliest 08:00, latest 21:30; longest observed run ended 23:36).
+	     RULING 3, governance/DECISIONS.md. Separate agent — NOT in any
+	     legacy crontab/agent. -->
+	<key>StartCalendarInterval</key>
+	<dict>
+		<key>Hour</key>
+		<integer>1</integer>
+		<key>Minute</key>
+		<integer>0</integer>
+	</dict>
+	<key>StandardOutPath</key>
+	<string>/Users/ujjwalkejriwal/alpha-research/data/sealed/ingest.log</string>
+	<key>StandardErrorPath</key>
+	<string>/Users/ujjwalkejriwal/alpha-research/data/sealed/ingest.log</string>
+</dict>
+</plist>

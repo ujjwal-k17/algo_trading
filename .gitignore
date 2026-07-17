@@ -4,3 +4,4 @@ __pycache__/
 .DS_Store
 data/sealed/
 data/legacy_snapshot/
+data/derived/
