@@ -99,10 +99,11 @@ the frozen clone's committed `output/trades_log.csv` — not from live productio
 
 ## 7. RESOLUTIONS (RULING 4, 2026-07-17) — supersedes the open questions below
 
-1. **T1 semantics → FULL exit at t1.** FACT: DB semantics
-   (`exit_manager.py:127-134,161-168`); the 50%-partial language is alert text
-   only (`:220-227`). ASSUMPTION: DB semantics chosen over alert semantics via
-   the residual realism principle (§8). Revisit if the desk trades partials.
+1. **T1 semantics → FULL exit at t1. CONFIRMED-BY-OPERATOR (2026-07-18):**
+   the operator states the desk takes the full exit at T1; the 50%-partial
+   alert text (`exit_manager.py:220-227`) is not traded. FACT: DB semantics
+   (`exit_manager.py:127-134,161-168`) — now operator-confirmed, no longer an
+   assumption chosen by inference. No SOP v2 required.
 2. **Same-bar SL+T1/T2 → SL-first, trade FLAGGED** (`flag_ambiguous_same_bar`).
    ASSUMPTION (conservative-standard; also matches code check order). Reporting
    shows results with and without flagged trades.

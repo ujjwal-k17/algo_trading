@@ -186,11 +186,10 @@ gate — not the price zone — is what rejected the profitable counterfactuals.
   reported in a separate ASSUMED_ENTRY scope; the gate-respecting (entered)
   figure is the weekly_summary headline. Like RECONSTRUCTED, scopes are never
   merged.
-- **T1 semantics: operator answer still PENDING** — the governance message's
-  placeholder was unfilled. SOP_OF_RECORD Q1 stays as-is (full exit at T1,
-  DB-semantics FACT + residual-realism ASSUMPTION) until the operator states
-  full-exit (→ mark CONFIRMED-BY-OPERATOR) or partial (→ SOP v2 draft for
-  executed leg only, paper leg unchanged).
+- **T1 semantics: RESOLVED 2026-07-18 — operator answered FULL exit at T1.**
+  SOP_OF_RECORD Q1 marked CONFIRMED-BY-OPERATOR; the paper leg's
+  full-exit-at-T1 convention is now operator-confirmed fact, not an inference.
+  No SOP v2, no engine change.
 
 ## 2026-07-17 — RULING: pre-log window (RECONSTRUCTED scope) + fills basis
 

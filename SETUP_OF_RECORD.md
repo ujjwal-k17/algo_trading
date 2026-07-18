@@ -66,13 +66,13 @@ fill-basis preference, RECONSTRUCTED-scope inference + never-merge guard.)
 
 ## Genuinely open items
 
-1. **T1 operator answer PENDING** — the governance message's placeholder was
-   unfilled. Full exit → mark SOP Q1 CONFIRMED-BY-OPERATOR; partial → SOP v2
-   draft (executed leg only) for review.
-2. **Overlay log still empty** — analyses 2–4 of AB_PREREG have n = 0 until
+1. **Overlay log still empty** — analyses 2–4 of AB_PREREG have n = 0 until
    decision-time logging starts. Most time-sensitive item in the program.
-3. **Data-sprint unknowns** (per slate register): NIFTY100 PIT constituent
+2. **Data-sprint unknowns** (per slate register): NIFTY100 PIT constituent
    depth; exchange filing-timestamp corpus; MCX bhavcopy bulk history;
    statutory cost verification vs current contract note; TRI download depth.
-4. **Fill-basis starved**: no exit fills in trades_log yet; activates
+3. **Fill-basis starved**: no exit fills in trades_log yet; activates
    automatically.
+
+(T1 semantics resolved 2026-07-18: FULL exit at T1, CONFIRMED-BY-OPERATOR —
+SOP_OF_RECORD §7.1.)
