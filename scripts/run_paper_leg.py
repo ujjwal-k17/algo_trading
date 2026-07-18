@@ -145,6 +145,9 @@ def settle_batch(
         result["symbol"] = r["symbol"]
         result["pick_date"] = r["pick_date"]
         result["stop_loss"] = float(r["stop_loss"])  # kept for fill-based R
+        # True = system confirmed entry; False = AUTO_EXPIRED settled with an
+        # assumed entry (separate ASSUMED_ENTRY scope); None = unknown (universe)
+        result["system_entered"] = r.get("system_entered")
         rows.append(result)
     return pd.DataFrame(rows)
 
@@ -162,6 +165,7 @@ def main() -> None:
         ledger["pick_date"].dt.strftime("%Y-%m-%d") + "|" + ledger["symbol"].astype(str) + "|1"
     )
     ledger = ledger.rename(columns={"target_1": "t1", "target_2": "t2"})
+    ledger["system_entered"] = ledger["exit_reason"] != "AUTO_EXPIRED_5_SESSIONS"
 
     universe = load_rec_universe()
     all_symbols = pd.concat([ledger[["symbol", "rec_key"]], universe[["symbol", "rec_key"]]])

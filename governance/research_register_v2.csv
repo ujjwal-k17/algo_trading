@@ -1,2 +1,4 @@
 trial_id,date,family,description,data_tier,result,notes
 INHERITED-0000,2026-07-17,ALL,Opening balance: ~51 trials inherited from the legacy research register,dev,n/a,True cumulative trial count = union of the legacy register and this register; counts never reset
+CONVENTION-0001,2026-07-18,ALL,Adopt governance/CONTAMINATION_POLICY.md: outcome-blind trial rule + pool eligibility (AMENDMENTS A & B),n/a,n/a,Outcome-conditional analyses are trials regardless of formality; only outcome-blind diagnostics are free; pooled NAV test admits shadow-survivors only
+INHERITED-SILVER-0001,2026-07-18,MCX_SILVER_ML,Inherited-trial note: Silver ML engine (SARIMAX/GARCH/LightGBM/Kalman) built with unregistered outcome iteration,tier3-adjacent,n/a,ESTIMATE >=8 inherited trials — basis: 4 model families x >=2 fit/tune cycles each (exact count unrecorded); engine forecasts must never merge into or filter SPEC-AG-01 (AMENDMENT C)

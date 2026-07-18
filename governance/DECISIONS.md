@@ -129,6 +129,40 @@ from ex-dates after 2026-06-24, not data error). Source identity established.
   `data/derived/nav.parquet` will exist as soon as a multi-day adjusted OHLC
   export enters the ingest (already in scope per the RULING 3 amendment).
 
+## 2026-07-18 — GOVERNANCE AMENDMENTS A/B/C + PIT fallback pre-commitment
+
+- **AMENDMENT A (outcome-blind trial rule)** adopted verbatim in
+  `governance/CONTAMINATION_POLICY.md`; referenced from the register
+  (CONVENTION-0001). **Consequence:** the PEAD CAR event-study is RECLASSIFIED
+  as SPEC-PEAD-01's single Tier 2 trial (it observes outcomes conditional on
+  the signal) and may run only after that spec's hash is frozen. The earlier
+  slate's description of it as a "zero-trial diagnostic" is superseded.
+- **AMENDMENT B (pool eligibility)** adopted verbatim in the same policy: the
+  pooled program NAV test admits only sleeves that individually survived their
+  shadow stage; pooling never resurrects a killed or unfinished sleeve.
+- **AMENDMENT C (Silver tier split):** the existing Silver ML forecasting
+  engine (SARIMAX/GARCH/LightGBM/Kalman) is **Tier 3-adjacent** — its model
+  fitting constituted unregistered outcome iteration. SPEC-AG-01 remains
+  Tier 2 strictly on carry/term-structure/seasonality features. The ML
+  engine's forecasts must NEVER be merged into, or used to filter, SPEC-AG-01.
+  Inherited-trial note logged (INHERITED-SILVER-0001): ESTIMATE ≥8 trials,
+  basis = 4 model families × ≥2 fit/tune cycles, exact count unrecorded.
+- **PIT fallback pre-commitment (fixed before any constituent data is
+  inspected):** "If NIFTY100 PIT constituent history has any gap > 2
+  consecutive quarters in the development window, SPEC-QFM-01 switches to the
+  F&O-eligible PIT universe, logged as a spec clarification, not a
+  variant/trial."
+- **Assumed-entry audit consequence:** paper rows settled from AUTO_EXPIRED
+  recs (system entry gate never confirmed; entry assumed at next open) are
+  reported in a separate ASSUMED_ENTRY scope; the gate-respecting (entered)
+  figure is the weekly_summary headline. Like RECONSTRUCTED, scopes are never
+  merged.
+- **T1 semantics: operator answer still PENDING** — the governance message's
+  placeholder was unfilled. SOP_OF_RECORD Q1 stays as-is (full exit at T1,
+  DB-semantics FACT + residual-realism ASSUMPTION) until the operator states
+  full-exit (→ mark CONFIRMED-BY-OPERATOR) or partial (→ SOP v2 draft for
+  executed leg only, paper leg unchanged).
+
 ## 2026-07-17 — RULING: pre-log window (RECONSTRUCTED scope) + fills basis
 
 - `overlay_log.csv` stays EMPTY for trades before its first real entry — no

@@ -117,3 +117,20 @@ def test_weekly_summary_rejects_mixed_provenance():
     b = overlay_alpha.join_overlay(PAPER, ov, provenance="RECONSTRUCTED")
     with pytest.raises(ValueError, match="never be merged"):
         overlay_alpha.weekly_summary(pd.concat([a, b]))
+
+
+def test_assumed_entry_scope_separated_headline_is_entered():
+    # 2026-07-18 ruling: gate-respecting figure is the headline; assumed-entry
+    # (AUTO_EXPIRED settled via assumed entry) reports separately.
+    ov = _overlay([
+        ("2026-07-01 09:30:00", "2026-07-01|AAA|1", "EXECUTE", 1, "take"),
+        ("2026-07-01 09:31:00", "2026-07-01|BBB|1", "EXECUTE", 1, "take"),
+    ])
+    paper = PAPER.assign(system_entered=[True, False, True])
+    s = overlay_alpha.weekly_summary(overlay_alpha.join_overlay(paper, ov))
+    scopes = set(s["scope"])
+    assert "entered" in scopes and "assumed_entry" in scopes and "all" not in scopes
+    wk27 = s[s.week == "2026-W27"]
+    assert wk27[wk27.scope == "entered"].recommended_r_sum.iloc[0] == 2.0   # AAA (exit 07-03)
+    wk28 = s[s.week == "2026-W28"]
+    assert wk28[wk28.scope == "assumed_entry"].recommended_r_sum.iloc[0] == -1.0  # BBB (exit 07-06)

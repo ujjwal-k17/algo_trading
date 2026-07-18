@@ -186,10 +186,28 @@ def weekly_summary(joined: pd.DataFrame, ledger: pd.DataFrame | None = None) -> 
         out.insert(1, "provenance", df["provenance"].iloc[0] if "provenance" in df else "DECISION_TIME")
         return out
 
-    full = _agg(settled, "all")
-    clean = settled.loc[~settled["flag_ambiguous_same_bar"].fillna(False)]
-    parts = [full] + ([_agg(clean, "ex_ambiguous")] if not clean.empty else [])
-    out = pd.concat(parts, ignore_index=True).sort_values(["week", "scope"]).reset_index(drop=True)
+    if "system_entered" in settled.columns and settled["system_entered"].notna().any():
+        # Assumed-entry audit ruling (DECISIONS.md 2026-07-18): the headline is
+        # the gate-respecting (system-entered) figure; recs settled from
+        # AUTO_EXPIRED rows via assumed entries report in a separate
+        # ASSUMED_ENTRY scope — never merged, like RECONSTRUCTED.
+        entered = settled.loc[settled["system_entered"].astype(bool)]
+        assumed = settled.loc[~settled["system_entered"].astype(bool)]
+        parts = []
+        if not entered.empty:
+            parts.append(_agg(entered, "entered"))
+            clean = entered.loc[~entered["flag_ambiguous_same_bar"].fillna(False)]
+            if not clean.empty:
+                parts.append(_agg(clean, "entered_ex_ambiguous"))
+        if not assumed.empty:
+            parts.append(_agg(assumed, "assumed_entry"))
+        out = (pd.concat(parts, ignore_index=True)
+               .sort_values(["week", "scope"]).reset_index(drop=True))
+    else:
+        full = _agg(settled, "all")
+        clean = settled.loc[~settled["flag_ambiguous_same_bar"].fillna(False)]
+        parts = [full] + ([_agg(clean, "ex_ambiguous")] if not clean.empty else [])
+        out = pd.concat(parts, ignore_index=True).sort_values(["week", "scope"]).reset_index(drop=True)
 
     if ledger is not None:
         rec = reconcile_fills(joined, ledger)
