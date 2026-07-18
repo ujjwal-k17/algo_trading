@@ -39,20 +39,92 @@ def load_overlay(path: str | Path = OVERLAY_LOG) -> pd.DataFrame:
     return last_per_key(df)
 
 
-def join_overlay(paper: pd.DataFrame, overlay: pd.DataFrame) -> pd.DataFrame:
+def join_overlay(
+    paper: pd.DataFrame,
+    overlay: pd.DataFrame,
+    ledger: pd.DataFrame | None = None,
+    provenance: str = "DECISION_TIME",
+) -> pd.DataFrame:
     """Join paper-leg settlements to overlay decisions on rec_key.
 
     Returns one row per overlay-decided rec: paper (recommended) outcome,
     executed outcome scaled by executed_size, and the overlay delta.
     Vetoes (executed_size 0) contribute 0 executed R by construction.
+
+    Fills basis (pre-log window ruling): where the ledger records an actual
+    exit fill, the EXECUTED leg's R is recomputed from the fill instead of the
+    paper exit price (requires stop_loss in the paper frame). Ledger
+    entry_price is NEVER used as a fill — it records rec-close, not a fill.
     """
     overlay = last_per_key(overlay)
     joined = overlay.merge(paper, on="rec_key", how="left", validate="one_to_one")
     size = pd.to_numeric(joined["executed_size"], errors="coerce").fillna(0.0)
     joined["recommended_r"] = joined["r_multiple"]
-    joined["executed_r"] = joined["r_multiple"] * size
+    executed_base = joined["r_multiple"].copy()
+    joined["fill_based"] = False
+    if ledger is not None and "stop_loss" in joined.columns and "pick_date" in joined.columns:
+        fills = ledger.loc[ledger["exit_price"].notna(),
+                           ["pick_date", "symbol", "exit_price"]].rename(
+            columns={"exit_price": "actual_exit"})
+        fills["pick_date"] = pd.to_datetime(fills["pick_date"])
+        joined["pick_date"] = pd.to_datetime(joined["pick_date"])
+        joined = joined.merge(fills, on=["pick_date", "symbol"], how="left")
+        risk = joined["entry_price"] - joined["stop_loss"]
+        has_fill = joined["actual_exit"].notna() & risk.gt(0) & joined["entry_price"].notna()
+        executed_base = executed_base.where(
+            ~has_fill,
+            (joined["actual_exit"] - joined["entry_price"]
+             + joined.get("dividend_credit", 0.0).fillna(0.0)) / risk,
+        )
+        joined["fill_based"] = has_fill
+    joined["executed_r"] = executed_base * size
     joined["delta_r"] = joined["executed_r"] - joined["recommended_r"]
+    joined["provenance"] = provenance
     return joined
+
+
+def reconstruct_overlay(
+    universe_paper: pd.DataFrame,
+    ledger: pd.DataFrame,
+    first_log_date: str | pd.Timestamp | None = None,
+) -> tuple[pd.DataFrame, int]:
+    """RECONSTRUCTED scope for the pre-log window (ruling, DECISIONS.md).
+
+    Infers decisions by joining the settled rec universe against trades_log:
+    matching ENTERED trade -> EXECUTE (size 1); no matching trade -> inferred
+    VETO (size 0); matching AUTO_EXPIRED row -> SYSTEM_NO_ENTRY, excluded from
+    grading (count returned). Binary only — REDUCE is not inferable.
+
+    Returns (synthetic overlay frame, n_system_no_entry). Feed the frame to
+    join_overlay(..., provenance="RECONSTRUCTED"); never merge with the
+    decision-time scope.
+    """
+    recs = universe_paper.copy()
+    recs["pick_date"] = pd.to_datetime(recs["pick_date"])
+    if first_log_date is not None:
+        recs = recs.loc[recs["pick_date"] < pd.Timestamp(first_log_date)]
+    led = ledger.copy()
+    led["pick_date"] = pd.to_datetime(led["pick_date"])
+    expired = led["exit_reason"] == "AUTO_EXPIRED_5_SESSIONS"
+    entered_keys = set(zip(led.loc[~expired, "pick_date"], led.loc[~expired, "symbol"]))
+    expired_keys = set(zip(led.loc[expired, "pick_date"], led.loc[expired, "symbol"]))
+
+    rows, n_system = [], 0
+    for _, r in recs.iterrows():
+        k = (r["pick_date"], r["symbol"])
+        if k in expired_keys:
+            n_system += 1
+            continue
+        if k in entered_keys:
+            dec, size, why = "EXECUTE", 1, "reconstructed: matching entered trade"
+        else:
+            dec, size, why = "VETO", 0, "reconstructed: no matching trade"
+        rows.append({"ts_local": None, "rec_key": r["rec_key"], "decision": dec,
+                     "executed_size": size, "reason": why})
+    return (
+        pd.DataFrame(rows, columns=["ts_local", "rec_key", "decision", "executed_size", "reason"]),
+        n_system,
+    )
 
 
 def reconcile_fills(joined: pd.DataFrame, ledger: pd.DataFrame) -> pd.DataFrame:
@@ -63,11 +135,19 @@ def reconcile_fills(joined: pd.DataFrame, ledger: pd.DataFrame) -> pd.DataFrame:
     Returns per-trade rows with pct divergence; empty if no executed trade has
     an actual exit fill recorded yet.
     """
-    executed = joined.loc[joined["decision"] == "EXECUTE"]
-    fills = ledger.loc[ledger["exit_price"].notna(), ["rec_key", "exit_price"]].rename(
+    executed = joined.loc[joined["decision"] == "EXECUTE"].copy()
+    fills = ledger.loc[ledger["exit_price"].notna(),
+                       ["pick_date", "symbol", "exit_price"]].rename(
         columns={"exit_price": "actual_exit"}
     )
-    rec = executed.merge(fills, on="rec_key", how="inner")
+    if executed.empty or fills.empty or "pick_date" not in executed.columns:
+        return pd.DataFrame(columns=["rec_key", "paper_exit", "actual_exit", "pct_divergence"])
+    fills["pick_date"] = pd.to_datetime(fills["pick_date"])
+    executed["pick_date"] = pd.to_datetime(executed["pick_date"])
+    if "actual_exit" in executed.columns:  # already merged by join_overlay
+        rec = executed.loc[executed["actual_exit"].notna()].copy()
+    else:
+        rec = executed.merge(fills, on=["pick_date", "symbol"], how="inner")
     if rec.empty:
         return pd.DataFrame(columns=["rec_key", "paper_exit", "actual_exit", "pct_divergence"])
     rec["pct_divergence"] = (
@@ -82,6 +162,11 @@ def weekly_summary(joined: pd.DataFrame, ledger: pd.DataFrame | None = None) -> 
     """Weekly overlay-vs-paper summary. Descriptive only — no significance
     claims; RULING 4b: rows are emitted for all trades and for the subset
     excluding flag_ambiguous_same_bar trades."""
+    if "provenance" in joined.columns and joined["provenance"].nunique() > 1:
+        raise ValueError(
+            "weekly_summary: mixed provenance — RECONSTRUCTED and DECISION_TIME "
+            "scopes must never be merged (pre-log window ruling)"
+        )
     settled = joined.loc[joined["exit_date"].notna()].copy()
     if settled.empty:
         return pd.DataFrame()
@@ -98,6 +183,7 @@ def weekly_summary(joined: pd.DataFrame, ledger: pd.DataFrame | None = None) -> 
             delta_r_sum=("delta_r", "sum"),
         ).reset_index()
         out.insert(1, "scope", scope)
+        out.insert(1, "provenance", df["provenance"].iloc[0] if "provenance" in df else "DECISION_TIME")
         return out
 
     full = _agg(settled, "all")

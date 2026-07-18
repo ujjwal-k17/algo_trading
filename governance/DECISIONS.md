@@ -129,6 +129,30 @@ from ex-dates after 2026-06-24, not data error). Source identity established.
   `data/derived/nav.parquet` will exist as soon as a multi-day adjusted OHLC
   export enters the ingest (already in scope per the RULING 3 amendment).
 
+## 2026-07-17 — RULING: pre-log window (RECONSTRUCTED scope) + fills basis
+
+- `overlay_log.csv` stays EMPTY for trades before its first real entry — no
+  backfilled decisions.
+- For 2026-06-29 → first-log-date, overlay_alpha derives executed/veto sets by
+  joining trades_log against the rec universe directly: a rec with a matching
+  ENTERED trade → EXECUTE (size 1); a rec with NO matching trade → inferred
+  VETO (size 0). Reported under provenance **RECONSTRUCTED** — never merged
+  with the DECISION_TIME scope (`weekly_summary` raises on mixed provenance).
+- ASSUMPTION: recs whose matching trades_log row is `AUTO_EXPIRED_5_SESSIONS`
+  are SYSTEM_NO_ENTRY (entry gate failed — no user discretion involved);
+  excluded from overlay grading, count reported.
+- ASSUMPTION: where a (data_date, symbol) has multiple generations, the LAST
+  generation is taken as the acted-on rec for reconstruction.
+- ASSUMPTION: REDUCE cannot be inferred from the ledger (no size data);
+  reconstruction is binary EXECUTE/VETO.
+- **Fills basis (FACT-driven):** where actual fill prices exist, overlay
+  comparisons use FILLS, not ledger entry_price — entry reconciliation showed
+  the ledger records rec-close while real fills print at open; the +0.33% mean
+  is a measurement artifact, not overlay skill. Implemented: fill-based
+  executed R wherever trades_log carries an actual exit price; paper values
+  otherwise. To grade inferred vetoes, the paper leg settles the full rec
+  universe (data/derived/paper_leg_recs.parquet) alongside the ledger batch.
+
 ## 2026-07-17 — RULING 4: SOP conventions (see SOP_OF_RECORD.md §7 for full text)
 
 - (a) Entry per clone code (FACT); fill price when unrecorded = next-session

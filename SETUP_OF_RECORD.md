@@ -8,9 +8,9 @@ Snapshot of everything that exists, as of 2026-07-17 (post decision-closure).
 cd ~/alpha-research && .venv/bin/python -m pytest tests/ -v
 ```
 
-(38 tests: isolation, seal hook, both gate doors, overlay shell, ingest
-idempotency, paper-leg conventions incl. dividend credits, overlay-alpha join
-+ fill reconciliation.)
+(41 tests: isolation, seal hook, both gate doors, overlay shell, ingest
+idempotency, paper-leg conventions incl. dividend credits, overlay-alpha join,
+fill-basis preference, RECONSTRUCTED-scope inference + never-merge guard.)
 
 ## SHAs
 
@@ -18,7 +18,7 @@ idempotency, paper-leg conventions incl. dividend credits, overlay-alpha join
 |---|---|
 | Seal commit (`governance/SEAL.md`, recorded in `governance/SEAL_COMMIT_SHA.txt`) | `b7e4224c311034ca57aa46e9ab38c46f75ce63cc` |
 | Legacy engine pin (production HEAD at clone time, `governance/LEGACY_PIN.md`) | `ee7ad13228244f4f27e3d2d839baf70897ff24fe` |
-| Workspace commits | `223f360` rules → `b7e4224` seal → `216577f` SHA record → `612b0cd` legacy pin → `ffd45eb` isolation suite → `b70e928` decision closure → `5da00b9` settlement unblock → (this commit) independent OHLC + first settled batch |
+| Workspace commits | `223f360` rules → `b7e4224` seal → `216577f` SHA record → `612b0cd` legacy pin → `ffd45eb` isolation suite → `b70e928` decision closure → `5da00b9` settlement unblock → `1abf750` independent OHLC + settled batch → (this commit) pre-log RECONSTRUCTED scope + fills basis |
 
 ## Paths
 
@@ -33,6 +33,7 @@ idempotency, paper-leg conventions incl. dividend credits, overlay-alpha join
 | `data/market/ohlc/`, `data/market/actions/` | independent UNADJUSTED yfinance fetches (gitignored), ledger symbols only, dated parquet, idempotent; refreshed nightly by the ingest agent |
 | `data/derived/paper_leg.parquet` | paper-leg settlements (gitignored); **25/25 SETTLED** (9 TIME, 7 SL, 6 T1, 2 T1-gap, 1 SL-gap; net +5.18R; 1 dividend credit) |
 | `data/derived/nav.parquet` | DERIVED daily NAV (gitignored): 15 marks 2026-06-29→07-17, unadjusted closes + dividend accrual, −0.70% |
+| `data/derived/paper_leg_recs.parquet` | rec-UNIVERSE settlements (18 recs, generated-date anchored, real `data_date\|SYM\|seq` keys) — feeds the RECONSTRUCTED overlay scope |
 | `~/Library/LaunchAgents/com.alpha.ingest.plist` | nightly ingest at **01:00** (installed + loaded; source copy in `scripts/`) |
 | `.venv` | python 3.14, pandas 3.0.3, pytest 9.1.1, pyarrow 25.0.0 |
 
@@ -52,16 +53,16 @@ idempotency, paper-leg conventions incl. dividend credits, overlay-alpha join
 
 ## Genuinely open items
 
-1. **Fill reconciliation needs fills.** The exit-price reconciliation vs
-   trades_log (the only yfinance-independent check) is wired into
-   `weekly_summary()`, but production's trades_log has no completed exits with
-   prices yet, and the overlay log has no EXECUTE rows — it activates as both
-   accumulate. Entry-side reconciliation ran at the settlement gate: 11
-   entered trades, mean +0.33%, range −0.65%…+1.58% (ledger records rec-close,
-   paper uses next-open; three exact matches were open-fills).
-2. **T1 partial-exit check** (standing): paper leg uses full-exit-at-T1 (DB
-   semantics FACT); flag if the desk trades the 50%-partial the alerts
-   describe.
-3. **Overlay log is still empty** — start logging decisions with
-   `overlay '<rec_key>' <DECISION> <size> <reason>` to give overlay-alpha
-   something to grade.
+1. **Pre-log window finding: ZERO inferred vetoes.** Reconstruction over the
+   rec universe (18 settled recs) found every rec has a matching trades_log
+   row — production ledgers every pick, so "no matching trade" never occurs.
+   7 entered → reconstructed EXECUTE (+1.71R, delta 0 by construction);
+   11 AUTO_EXPIRED → SYSTEM_NO_ENTRY (entry gate, not user discretion,
+   excluded per ruling). The pre-log window shows no reconstructable evidence
+   of overlay discretion; real grading starts with the first logged decision.
+2. **Fill-basis is wired but starved:** trades_log has no recorded exit fills
+   yet; executed-leg R switches from paper to fills automatically as they
+   appear (`fill_based` column marks rows).
+3. **Overlay log still empty** — `overlay '<rec_key>' <DECISION> <size> <reason>`.
+4. **T1 partial-exit check** (standing): flag if the desk trades the
+   50%-partial the alerts describe; paper leg uses full-exit-at-T1 (DB FACT).

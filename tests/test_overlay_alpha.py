@@ -12,8 +12,14 @@ import overlay_alpha
 PAPER = pd.DataFrame(
     {
         "rec_key": ["2026-07-01|AAA|1", "2026-07-01|BBB|1", "2026-07-02|CCC|1"],
+        "pick_date": pd.to_datetime(["2026-07-01", "2026-07-01", "2026-07-02"]),
+        "symbol": ["AAA", "BBB", "CCC"],
+        "entry_price": [100.0, 100.0, 100.0],
+        "stop_loss": [95.0, 95.0, 95.0],
         "exit_date": pd.to_datetime(["2026-07-03", "2026-07-06", "2026-07-08"]),
+        "exit_price": [110.0, 95.0, 107.5],
         "r_multiple": [2.0, -1.0, 1.5],
+        "dividend_credit": [0.0, 0.0, 0.0],
         "flag_ambiguous_same_bar": [False, False, True],
     }
 )
@@ -70,10 +76,44 @@ def test_reconcile_fills_executed_only_with_divergence():
         ("2026-07-01 09:30:00", "2026-07-01|AAA|1", "EXECUTE", 1, "take"),
         ("2026-07-01 09:31:00", "2026-07-01|BBB|1", "VETO", 0, "skip"),
     ])
-    paper = PAPER.assign(exit_price=[110.0, 95.0, 108.0])
-    ledger = pd.DataFrame({"rec_key": ["2026-07-01|AAA|1", "2026-07-01|BBB|1"],
-                           "exit_price": [109.45, 95.0]})
-    import overlay_alpha
-    rec = overlay_alpha.reconcile_fills(overlay_alpha.join_overlay(paper, ov), ledger)
+    ledger = pd.DataFrame({"pick_date": ["2026-07-01", "2026-07-01"],
+                           "symbol": ["AAA", "BBB"], "exit_price": [109.45, 95.0]})
+    rec = overlay_alpha.reconcile_fills(overlay_alpha.join_overlay(PAPER, ov), ledger)
     assert len(rec) == 1  # veto excluded
     assert rec.iloc[0]["pct_divergence"] == pytest.approx(0.5025, abs=1e-3)
+
+
+def test_fill_based_executed_r_prefers_actual_exit():
+    # fills basis (pre-log ruling): executed R from the recorded fill, not paper exit
+    ov = _overlay([("2026-07-01 09:30:00", "2026-07-01|AAA|1", "EXECUTE", 1, "take")])
+    ledger = pd.DataFrame({"pick_date": ["2026-07-01"], "symbol": ["AAA"],
+                           "exit_price": [108.0]})
+    j = overlay_alpha.join_overlay(PAPER, ov, ledger=ledger)
+    row = j.iloc[0]
+    assert bool(row["fill_based"])
+    assert row["executed_r"] == pytest.approx((108.0 - 100.0) / 5.0)  # 1.6, not 2.0
+    assert row["recommended_r"] == 2.0  # paper leg unchanged
+
+
+def test_reconstruct_overlay_infers_execute_veto_and_excludes_system():
+    universe = pd.DataFrame({
+        "rec_key": ["2026-07-01|AAA|1", "2026-07-01|BBB|1", "2026-07-01|CCC|1"],
+        "pick_date": pd.to_datetime(["2026-07-01"] * 3),
+        "symbol": ["AAA", "BBB", "CCC"],
+    })
+    ledger = pd.DataFrame({
+        "pick_date": ["2026-07-01", "2026-07-01"], "symbol": ["AAA", "BBB"],
+        "exit_reason": [None, "AUTO_EXPIRED_5_SESSIONS"],
+    })
+    recon, n_sys = overlay_alpha.reconstruct_overlay(universe, ledger)
+    by_key = dict(zip(recon.rec_key, recon.decision))
+    assert by_key == {"2026-07-01|AAA|1": "EXECUTE", "2026-07-01|CCC|1": "VETO"}
+    assert n_sys == 1  # BBB: system entry-gate expiry, not user discretion
+
+
+def test_weekly_summary_rejects_mixed_provenance():
+    ov = _overlay([("2026-07-01 09:30:00", "2026-07-01|AAA|1", "EXECUTE", 1, "take")])
+    a = overlay_alpha.join_overlay(PAPER, ov, provenance="DECISION_TIME")
+    b = overlay_alpha.join_overlay(PAPER, ov, provenance="RECONSTRUCTED")
+    with pytest.raises(ValueError, match="never be merged"):
+        overlay_alpha.weekly_summary(pd.concat([a, b]))

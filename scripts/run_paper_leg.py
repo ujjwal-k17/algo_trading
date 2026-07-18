@@ -1,17 +1,22 @@
 #!/usr/bin/env python3
-"""Batch paper-leg settlement over the ledger snapshot.
+"""Batch paper-leg settlement.
 
-Reads the fills/ledger snapshot (Tier 1, via data_gate.load_operational),
-resolves entries per RULING 4a, settles each rec against daily OHLC if an
-OHLC file is provided, and writes data/derived/paper_leg.parquet.
+Two batches, both Tier 1 (data_gate.load_operational):
 
-OHLC source: --ohlc <csv> with columns symbol,date,open,high,low,close
-(ADJUSTED series — RULING 4h). Without it, recs are written as UNSETTLED;
-no OHLC flat export exists in the sanctioned snapshot scope yet (the
-production prices live in the DB, which is off-limits).
+1. LEDGER batch — trades_log snapshot picks -> data/derived/paper_leg.parquet
+   (rec_key = pick_date|SYMBOL|1; seq=1 ASSUMPTION, DECISIONS.md RULING 1).
+2. REC-UNIVERSE batch — all rec-file recs in the live window, last generation
+   per (data_date, symbol) -> data/derived/paper_leg_recs.parquet (real
+   rec_key data_date|SYMBOL|seq). Feeds the RECONSTRUCTED overlay scope:
+   inferred vetoes have no ledger row, so grading them needs the full
+   universe settled (pre-log window ruling, DECISIONS.md).
 
-rec_key: pick_date|SYMBOL|1 for ledger rows (seq=1 ASSUMPTION — the ledger
-does not record the generation; see governance/DECISIONS.md RULING 1).
+OHLC: newest data/market/ohlc parquet (UNADJUSTED, amended RULING 4h), else
+raw-snapshot backup CSV. Dividends from data/market/actions feed credits.
+
+Settlement gate (Option 1 ruling): before writing, reconcile paper-leg entry
+prices vs trades_log-recorded fills for entered trades and report the
+distribution.
 """
 
 from __future__ import annotations
@@ -24,11 +29,14 @@ import pandas as pd
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "src"))
+sys.path.insert(0, str(REPO / "scripts"))
 import data_gate
 import paper_leg
 
 SNAPSHOT = REPO / "data" / "legacy_snapshot" / "trades_log_ee7ad13.csv"
+RECS_DIR = REPO / "data" / "legacy_snapshot" / "recs"
 OUT = REPO / "data" / "derived" / "paper_leg.parquet"
+OUT_RECS = REPO / "data" / "derived" / "paper_leg_recs.parquet"
 
 
 def _latest_ohlc_snapshot() -> str | None:
@@ -56,7 +64,7 @@ def _read_any(path: str) -> pd.DataFrame:
 def load_settlement_ohlc(path: str, ledger: pd.DataFrame) -> dict[str, pd.DataFrame]:
     """Load snapshot OHLC through the Tier 1 door via the settlement join.
 
-    The panel is restricted to ledger symbols and live-window dates and tagged
+    The panel is restricted to rec symbols and live-window dates and tagged
     with the rec_keys it settles (rec_key-joinable shape) before passing
     data_gate.load_operational() — a generic panel would be rejected.
     """
@@ -73,11 +81,79 @@ def load_settlement_ohlc(path: str, ledger: pd.DataFrame) -> dict[str, pd.DataFr
             for s, g in gated.groupby("symbol")}
 
 
+def load_rec_universe() -> pd.DataFrame:
+    """Live-window rec universe, LAST generation per (data_date, symbol)
+    (reconstruction ASSUMPTION, DECISIONS.md), Tier 1 gated."""
+    from build_workspace import load_rec_files
+
+    recs = load_rec_files(RECS_DIR)
+    if recs.empty:
+        return recs
+    # The ledger's pick_date aligns with the rec's GENERATED date (a rec
+    # generated on X enters X+1), so generated_date anchors both settlement
+    # and reconstruction; rec_key keeps data_date|SYMBOL|seq (RULING 1).
+    recs["pick_date"] = pd.to_datetime(recs["generated_date"])
+    recs = recs.loc[recs["pick_date"] >= data_gate.LIVE_WINDOW_START]
+    # One generated date can carry picks from several data dates; per
+    # (generated_date, symbol) keep the freshest data_date (ASSUMPTION).
+    recs = (recs.sort_values("data_date")
+            .groupby(["pick_date", "symbol"], as_index=False).tail(1))
+    recs = recs.rename(columns={"target_1": "t1", "target_2": "t2"})
+    keep = recs[["rec_key", "pick_date", "symbol", "stop_loss", "t1", "t2"]]
+    return data_gate.load_operational(keep, "pick_date", source=str(RECS_DIR) + "/")
+
+
+def settle_batch(
+    recs: pd.DataFrame,
+    ohlc_by_symbol: dict[str, pd.DataFrame],
+    div_by_symbol: dict[str, pd.DataFrame],
+) -> pd.DataFrame:
+    """Settle rows with rec_key/pick_date/symbol/stop_loss/t1/t2 columns."""
+    rows = []
+    for _, r in recs.iterrows():
+        rec = {
+            "rec_key": r["rec_key"], "pick_date": r["pick_date"],
+            "stop_loss": r["stop_loss"], "t1": r["t1"], "t2": r.get("t2"),
+        }
+        ohlc = ohlc_by_symbol.get(r["symbol"])
+        result, reason = None, None
+        if not ohlc_by_symbol:
+            reason = "no sanctioned OHLC coverage in the live window"
+        elif ohlc is None:
+            reason = "symbol absent from sanctioned OHLC source"
+        else:
+            entry = paper_leg.resolve_entry(rec, ohlc)
+            if entry is None:
+                reason = (f"no OHLC session after pick_date "
+                          f"(coverage ends {ohlc['date'].max().date()})")
+            else:
+                result = paper_leg.settle(
+                    {**rec, **entry}, ohlc, dividends=div_by_symbol.get(r["symbol"])
+                )
+                if result["exit_rule"] == "UNSETTLED":
+                    reason = (f"position still open at end of OHLC coverage "
+                              f"({result['sessions_held']} sessions held)")
+        if result is None:
+            result = {
+                "rec_key": rec["rec_key"], "entry_date": None, "entry_price": None,
+                "exit_date": None, "exit_price": None, "r_multiple": None,
+                "dividend_credit": 0.0, "exit_rule": "UNSETTLED", "sessions_held": 0,
+                "flag_ambiguous_same_bar": False, "flag_halt_carry": False,
+                "flag_entry_assumed": False, "flag_ex_date": None,
+            }
+        result["unsettled_reason"] = reason
+        result["symbol"] = r["symbol"]
+        result["pick_date"] = r["pick_date"]
+        result["stop_loss"] = float(r["stop_loss"])  # kept for fill-based R
+        rows.append(result)
+    return pd.DataFrame(rows)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--snapshot", default=str(SNAPSHOT))
     ap.add_argument("--ohlc", default=_latest_ohlc_snapshot(),
-                    help="CSV: symbol,date,open,high,low,close (adjusted)")
+                    help="CSV/parquet: symbol,date,open,high,low,close (UNADJUSTED)")
     args = ap.parse_args()
 
     raw = pd.read_csv(args.snapshot)
@@ -85,11 +161,15 @@ def main() -> None:
     ledger["rec_key"] = (
         ledger["pick_date"].dt.strftime("%Y-%m-%d") + "|" + ledger["symbol"].astype(str) + "|1"
     )
+    ledger = ledger.rename(columns={"target_1": "t1", "target_2": "t2"})
+
+    universe = load_rec_universe()
+    all_symbols = pd.concat([ledger[["symbol", "rec_key"]], universe[["symbol", "rec_key"]]])
 
     ohlc_by_symbol: dict[str, pd.DataFrame] = {}
     ohlc_max_date = None
     if args.ohlc:
-        ohlc_by_symbol = load_settlement_ohlc(args.ohlc, ledger)
+        ohlc_by_symbol = load_settlement_ohlc(args.ohlc, all_symbols)
         if ohlc_by_symbol:
             ohlc_max_date = max(g["date"].max() for g in ohlc_by_symbol.values())
 
@@ -99,9 +179,7 @@ def main() -> None:
         acts = pd.read_parquet(actions_path)
         div_by_symbol = {s: g for s, g in acts.groupby("symbol")}
 
-    # ── Settlement gate (Option 1 ruling): reconcile paper-leg entry prices
-    # (next-session open, unadjusted) vs the fills recorded in trades_log for
-    # entered trades, BEFORE writing paper_leg.parquet.
+    # ── Settlement gate (Option 1 ruling): entry reconciliation before writing.
     entered = ledger.loc[ledger["exit_reason"] != "AUTO_EXPIRED_5_SESSIONS"]
     divs = []
     for _, r in entered.iterrows():
@@ -119,64 +197,27 @@ def main() -> None:
         print(f"[gate] entry reconciliation, {len(d)} entered trades: "
               f"mean {d.pct.mean():+.2f}% | median {d.pct.median():+.2f}% | "
               f"min {d.pct.min():+.2f}% | max {d.pct.max():+.2f}%")
-        for _, x in d.iterrows():
-            print(f"  {x.rec_key}: ledger {x.ledger_fill:.2f} vs paper open {x.paper_entry:.2f} ({x.pct:+.2f}%)")
     else:
         print("[gate] entry reconciliation: no entered trades with OHLC coverage")
 
-    rows = []
-    for _, r in ledger.iterrows():
-        rec = {
-            "rec_key": r["rec_key"],
-            "pick_date": r["pick_date"],
-            "stop_loss": r["stop_loss"],
-            "t1": r["target_1"],
-            "t2": r.get("target_2"),
-        }
-        ohlc = ohlc_by_symbol.get(r["symbol"])
-        result, reason = None, None
-        if not ohlc_by_symbol:
-            reason = "no sanctioned OHLC coverage in the live window"
-        elif ohlc is None:
-            reason = "symbol absent from sanctioned OHLC source"
-        else:
-            entry = paper_leg.resolve_entry(rec, ohlc)
-            if entry is None:
-                reason = (
-                    f"no OHLC session after pick_date "
-                    f"(coverage ends {ohlc['date'].max().date()})"
-                )
-            else:
-                result = paper_leg.settle(
-                    {**rec, **entry}, ohlc, dividends=div_by_symbol.get(r["symbol"])
-                )
-                if result["exit_rule"] == "UNSETTLED":
-                    reason = (
-                        f"position still open at end of OHLC coverage "
-                        f"({result['sessions_held']} sessions held)"
-                    )
-        if result is None:
-            result = {
-                "rec_key": rec["rec_key"], "entry_date": None, "entry_price": None,
-                "exit_date": None, "exit_price": None, "r_multiple": None,
-                "dividend_credit": 0.0, "exit_rule": "UNSETTLED", "sessions_held": 0,
-                "flag_ambiguous_same_bar": False, "flag_halt_carry": False,
-                "flag_entry_assumed": False, "flag_ex_date": None,
-            }
-        result["unsettled_reason"] = reason
-        result["symbol"] = r["symbol"]
-        result["pick_date"] = r["pick_date"]
-        rows.append(result)
-
-    out = pd.DataFrame(rows)
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    out.to_parquet(OUT, index=False)
-    settled = (out["exit_rule"] != "UNSETTLED").sum()
     print(f"[paper-leg] OHLC source: {args.ohlc or 'NONE'}"
           + (f" (coverage max {ohlc_max_date.date()})" if ohlc_max_date is not None else ""))
-    print(f"[paper-leg] {len(out)} recs -> {settled} settled, {len(out) - settled} unsettled -> {OUT}")
+
+    out = settle_batch(ledger, ohlc_by_symbol, div_by_symbol)
+    out.to_parquet(OUT, index=False)
+    settled = (out["exit_rule"] != "UNSETTLED").sum()
+    print(f"[paper-leg] ledger: {len(out)} recs -> {settled} settled -> {OUT}")
     for _, r in out.loc[out["exit_rule"] == "UNSETTLED"].iterrows():
         print(f"  UNSETTLED {r['rec_key']}: {r['unsettled_reason']}")
+
+    if not universe.empty:
+        out_u = settle_batch(universe, ohlc_by_symbol, div_by_symbol)
+        out_u.to_parquet(OUT_RECS, index=False)
+        settled_u = (out_u["exit_rule"] != "UNSETTLED").sum()
+        print(f"[paper-leg] rec universe: {len(out_u)} recs -> {settled_u} settled -> {OUT_RECS}")
+        for _, r in out_u.loc[out_u["exit_rule"] == "UNSETTLED"].iterrows():
+            print(f"  UNSETTLED {r['rec_key']}: {r['unsettled_reason']}")
 
 
 if __name__ == "__main__":

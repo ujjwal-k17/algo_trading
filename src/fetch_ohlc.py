@@ -31,7 +31,16 @@ START = "2026-06-29"  # live-window start (data_gate.LIVE_WINDOW_START)
 
 
 def ledger_symbols() -> list[str]:
-    return sorted(pd.read_csv(SNAPSHOT)["symbol"].unique())
+    """Ledger symbols ∪ rec-file symbols (still rec-scoped, not the whole
+    universe) — inferred-veto grading needs OHLC for recs absent from the
+    ledger (pre-log window ruling, DECISIONS.md)."""
+    syms = set(pd.read_csv(SNAPSHOT)["symbol"].unique())
+    for f in (REPO / "data" / "legacy_snapshot" / "recs").glob("top5_report_data*.csv"):
+        try:
+            syms |= set(pd.read_csv(f, comment="#")["symbol"].dropna().unique())
+        except Exception:
+            continue
+    return sorted(syms)
 
 
 def main() -> None:
