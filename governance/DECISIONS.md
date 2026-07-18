@@ -129,6 +129,35 @@ from ex-dates after 2026-06-24, not data error). Source identity established.
   `data/derived/nav.parquet` will exist as soon as a multi-day adjusted OHLC
   export enters the ingest (already in scope per the RULING 3 amendment).
 
+## 2026-07-18 — Tradeability audit of the 14 ASSUMED_ENTRY recs (operator-ordered)
+
+Run under the Tier 1 settlement/monitoring sanction as QA of a settlement
+convention on the burned family — directional only, no significance claims,
+not signal research; not logged as a trial.
+
+Method: each expired rec's assumed-entry OPEN tested against its entry_type's
+own gate geometry from the clone (`preopen_check.py`): CONDITIONAL skip-floor
+= hold_level(close×0.995) − 1%; W&W requires gap ≥ +0.5% (none present in the
+14); all 14 are CONDITIONAL variants. Caveats: (a) the true gate is the
+9:20/9:45 candle close + volume ratio — open is the daily-data proxy,
+consistent with the paper leg's own entry convention; (b) volume confirmation
+is unobservable from daily bars, hence "trigger unconfirmed", not "would have
+confirmed"; (c) 3 recs are "CONDITIONAL (expiry day — stricter)" approximated
+with standard geometry — the stricter rule's exact terms were not extracted.
+
+**Finding: 2/14 OUTSIDE the zone (never executable as assumed) — both
+MOTHERSON expiry-day recs gapping −1.8%/−2.3%, both −1R. 12/14 INSIDE the
+zone with the trigger simply unconfirmed, netting +8.50R.**
+
+**Consequence: majority are NOT gap-aways → the conditional annotation
+("materially non-executable — selection-biased") and demotion below
+RECONSTRUCTED do NOT apply. ASSUMED_ENTRY scope reporting unchanged.**
+Directional observation (burned family, n=12, no claim): the positive skew of
+ASSUMED_ENTRY is not price-unreachability — excluding the two unreachable
+rows RAISES the scope to +8.50R. The recs the system declined were mostly
+in-zone but failed candle/volume confirmation; if anything, the confirmation
+gate — not the price zone — is what rejected the profitable counterfactuals.
+
 ## 2026-07-18 — GOVERNANCE AMENDMENTS A/B/C + PIT fallback pre-commitment
 
 - **AMENDMENT A (outcome-blind trial rule)** adopted verbatim in
