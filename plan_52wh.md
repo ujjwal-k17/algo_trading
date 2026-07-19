@@ -157,10 +157,19 @@ Order matters: A1/A2/A3 are the blocking unknowns; A4 is build work that can sta
         from illiquidity mirage.
       - Kill line (pre-committed): net IR ≤ 0, or SPA/RC p > 0.10 net of costs →
         family dead. No "works gross" survivorship.
-- [ ] **B3. Hash-freeze the spec, enter it in `research_register_v2.csv`.** Only
-      after B3 may any expression touch outcome data. Queue position: behind
-      SPEC-QFM-01 / SPEC-PEAD-01 (shadow cap 2) and SPEC-AG-01 — pre-cutoff
-      development may proceed, no slot-jumping.
+- [x] **B3. Spec HASH-FROZEN 2026-07-19.**
+      `sha256 4b58f285255db1b35bdf831aaaaa16aae6bde8bbf38987a501194bf89ddbbefc`
+      recorded in `governance/specs/SPEC-52WH-01.sha256`; register row
+      `FREEZE-52WH-0001` added in the same commit; spec banner flipped
+      DRAFT → FROZEN (that edit is inside the hashed text). The spec is now
+      immutable — changes require `SPEC-52WH-02.md`, never an edit.
+      **Queue ruling (recorded here because it was the gating question):** the
+      shadow cap of 2 gates the *shadow-book / sealed-test* stage (Phase D,
+      spec §10), not the freeze. Freezing consumes no slot — it only makes the
+      text binding and unlocks Phase C outcome contact on **dev data
+      < 2024-07-17**, which B3 always permitted ("pre-cutoff development may
+      proceed"). QFM + PEAD keep both shadow slots; AG-01 stays queued ahead of
+      52WH for the slot itself. No slot-jumping occurred.
 
 ## Phase C — Pre-cutoff development (registered trials, post-freeze only)
 
@@ -216,19 +225,17 @@ The returns join and any performance number exist only inside the trial runner
 | `src/costs_in.py` ✅ | Cost stack per RULING 5 (Phase A2): brokerage, STT, exchange, stamp, GST, SEBI per leg; slippage a separate named parameter. | DONE 2026-07-19 (built with A2): `tests/test_costs_in.py`. |
 | `src/rebalance.py` ✅ | Rebalance calendar (Q default, M/H sensitivities; last trading day per period from the panel's own dates — partial final period included, trial runner decides), `trades` diff, ONE-WAY turnover = sum(\|Δw\|)/2. | DONE: turnover on a synthetic book matches hand calc; calendar respects supplied holidays. `tests/test_rebalance.py` (9). |
 
-### Stage 4 — Governance enforcement
+### Stage 4 — Governance enforcement — BUILT 2026-07-19
 
-- `governance/specs/SPEC-52WH-01.md`: expression strings + universe + rebalance +
-  conditioning list + scoring + kill line. Freeze = commit + record
-  `sha256` in `governance/specs/SPEC-52WH-01.sha256`; register row added in the
-  same commit.
-- Extend `.githooks/pre-commit`: any edit to a spec file with a recorded hash is
-  blocked (same pattern as SEAL.md immutability).
-- `scripts/run_trial_52wh.py` (the ONLY place returns are joined to signals):
-  refuses to start unless (a) the spec file's live hash equals the recorded hash,
-  and (b) a register row for this trial exists; appends its result reference to
-  the register on completion. This makes trial accounting structural, not
-  disciplinary.
+Two independent halves: the hook is commit-time, the guard is run-time. Neither
+alone is sufficient — a spec edited in the working tree and never committed
+sails past the hook, so the runner re-verifies at the moment of outcome contact.
+
+| Artifact | What it enforces | Acceptance |
+|---|---|---|
+| `.githooks/pre-commit` (extended) ✅ | A spec is FROZEN once its sibling `.sha256` is in HEAD; later edits blocked (SEAL.md pattern — the freeze commit itself is the allowed escape). Recorded hashes are themselves immutable: rewriting OR deleting one is blocked, else a spec reopens by deleting its hash. A freeze commit's staged hash must match the staged spec bytes, so freeze-and-edit in one commit is caught. | DONE: `tests/test_spec_freeze_hook.py` (6) — draft freely editable, freeze allowed, post-freeze edit blocked, hash rewrite/delete blocked, wrong-hash freeze blocked, same-commit freeze+edit blocked. |
+| `src/spec_guard.py` ✅ | Run-time gate: `verify_frozen` (live sha256 of raw bytes == recorded) + `require_trial_row` (trial pre-registered) → `preflight` returns a provenance stamp. The runner never writes its own register row — that would make the check circular. | DONE: `tests/test_spec_guard.py` (6), incl. a live assertion that the real SPEC-52WH-01 is frozen and its register row cites the same hash. |
+| `scripts/run_trial_52wh.py` ✅ | The ONLY place returns join signals. Preflight runs BEFORE any panel is read, so a failed gate cannot leak a glance at outcomes. Exit 2 = refused, 3 = Stage 5 engine not built. | DONE: verified live — unregistered trial refused (2); registered preflight passes (0); tampering with the real spec by one comment line → HASH MISMATCH refusal. |
 
 ### Stage 5 — Trial harness (post-freeze only)
 

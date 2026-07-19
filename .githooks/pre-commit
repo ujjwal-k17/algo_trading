@@ -2,6 +2,9 @@
 # Seal enforcement (governance/SEAL.md). Installed via: git config core.hooksPath .githooks
 # Blocks: (1) any staged change to governance/SEAL.md once it exists in HEAD
 #         (2) any staged file under data/sealed/
+#         (3) any staged change to a frozen spec (one whose .sha256 is in HEAD),
+#             and any change to a recorded .sha256 itself
+# Verifies: (4) a freeze commit's staged .sha256 matches the staged spec content
 
 staged=$(git diff --cached --name-only)
 
@@ -21,5 +24,61 @@ if printf '%s\n' "$staged" | grep -q "^data/sealed/"; then
     echo "BLOCKED: files under data/sealed/ may never be committed." >&2
     exit 1
 fi
+
+# --- spec freeze enforcement (governance/specs/, plan_52wh.md Stage 4) ---------
+# A spec is FROZEN once its sibling .sha256 exists in HEAD. Same escape as the
+# seal: the freeze commit itself (hash not yet in HEAD) is allowed, every later
+# edit is not. Without (3b) a frozen spec could be reopened by simply deleting
+# or rewriting its recorded hash.
+
+sha256_of_staged() {
+    if command -v shasum >/dev/null 2>&1; then
+        git show ":$1" | shasum -a 256 | cut -d' ' -f1
+    else
+        git show ":$1" | sha256sum | cut -d' ' -f1
+    fi
+}
+
+in_head() {
+    git rev-parse --verify HEAD >/dev/null 2>&1 || return 1
+    git ls-tree -r --name-only HEAD -- "$1" | grep -qx "$1"
+}
+
+for spec in $(printf '%s\n' "$staged" | grep '^governance/specs/.*\.md$'); do
+    recorded="${spec%.md}.sha256"
+    # (3a) frozen spec — text is immutable
+    if in_head "$recorded"; then
+        echo "BLOCKED: $spec is FROZEN (hash recorded in $recorded)." >&2
+        echo "A frozen spec may never be edited. Write a new versioned spec" >&2
+        echo "(e.g. ${spec%.md}-v2.md) with its own hash and register row." >&2
+        exit 1
+    fi
+done
+
+for rec in $(printf '%s\n' "$staged" | grep '^governance/specs/.*\.sha256$'); do
+    # (3b) a recorded hash is itself immutable — no reopening by deletion
+    if in_head "$rec"; then
+        echo "BLOCKED: $rec is a recorded spec hash and may never be changed" >&2
+        echo "or deleted — that would silently unfreeze the spec." >&2
+        exit 1
+    fi
+    # (4) freeze commit: the hash being recorded must match the spec being frozen
+    spec="${rec%.sha256}.md"
+    if ! printf '%s\n' "$staged" | grep -qx "$spec"; then
+        if ! in_head "$spec"; then
+            echo "BLOCKED: $rec records a hash for $spec, which does not exist." >&2
+            exit 1
+        fi
+    fi
+    actual=$(sha256_of_staged "$spec")
+    claimed=$(git show ":$rec" | tr -d '[:space:]')
+    if [ "$claimed" != "$actual" ]; then
+        echo "BLOCKED: freeze hash mismatch for $spec." >&2
+        echo "  recorded: $claimed" >&2
+        echo "  actual:   $actual" >&2
+        echo "Record the hash of the exact text being committed." >&2
+        exit 1
+    fi
+done
 
 exit 0

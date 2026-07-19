@@ -1,11 +1,16 @@
 # SPEC-52WH-01 — 52-Week-High Negative Screen (frozen spec)
 
-**Status: DRAFT — NOT YET FROZEN.** This document becomes binding only at B3
-(plan_52wh.md): commit + `sha256` recorded in `governance/specs/SPEC-52WH-01.sha256`
-+ register row in `research_register_v2.csv`, same commit. Until then it may be
-edited freely; after freeze, any edit is blocked by the pre-commit hook and the
-family is testable only as written. **No expression below may touch outcome data
-before freeze.**
+**Status: FROZEN (B3, 2026-07-19).** This document is BINDING. Its `sha256` is
+recorded in `governance/specs/SPEC-52WH-01.sha256` and its register row
+(`FREEZE-52WH-0001`) was added in the same commit. Any edit to this file is now
+blocked by `.githooks/pre-commit`; changes require a new versioned spec
+(`SPEC-52WH-02.md`) — the SEAL_v2 pattern, never an edit. `scripts/run_trial_52wh.py`
+refuses to run unless this file's live hash equals the recorded hash.
+
+Outcome contact is unlocked for **dev data < 2024-07-17 only** (Phase C). The
+sealed holdout remains untouched: the family's single final test is pre-registered
+separately at Phase D and requires an open shadow slot (cap 2 — currently QFM +
+PEAD, with AG-01 queued ahead). Freezing consumes no shadow slot.
 
 Evidence base: `research.md` Part 4 (Raju 2023, SSRN 4587697 — deep read
 2026-07-18) and the 2026-07-18 breakout-literature review. Drafted 2026-07-19.

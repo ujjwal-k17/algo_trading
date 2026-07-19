@@ -158,7 +158,11 @@ protocol.
   is recorded alongside it and its register row exists (same commit); until
   then the file carries a DRAFT banner and may be edited freely. After freeze,
   changes require a new versioned spec, never an edit — the SEAL_v2 pattern.
-  Currently: `SPEC-52WH-01.md` (DRAFT, unfrozen).
+  Currently: `SPEC-52WH-01.md` (**FROZEN 2026-07-19**, sha256 `4b58f285…`,
+  register row `FREEZE-52WH-0001`). Enforced twice over: `.githooks/pre-commit`
+  blocks post-freeze edits AND blocks rewriting/deleting a recorded hash (else
+  a spec reopens by deleting its hash); `src/spec_guard.py` re-verifies at run
+  time, since an uncommitted working-tree edit never meets the hook.
 - `SOP_OF_RECORD.md`, `LEGACY_PIN.md`, `README_overlay.md`; repo-root
   `SETUP_OF_RECORD.md` = full inventory + open items.
 
@@ -185,13 +189,17 @@ protocol.
   conditioning list closed at 5 (regime, volume-confirm, extension,
   earnings-proximity, LODR event-exit). Kill line: net IR ≤ 0 or SPA p >
   0.10 net → dead. Notes: `research.md` (outcome-blind, frozen record);
-  execution + module blueprint: `plan_52wh.md` (living). Spec unfrozen —
-  features-only work is free; no outcome contact before hash-freeze.
+  execution + module blueprint: `plan_52wh.md` (living).
+  **SPEC FROZEN 2026-07-19 (B3) + Stage 4 enforcement built** — see GOVERNANCE
+  STACK above. Freezing consumed NO shadow slot (the cap-2 gate is Phase D's
+  sealed test, not the freeze); QFM + PEAD hold both slots, AG-01 still queued
+  ahead of 52WH. Outcome contact is now unlocked for **dev data < 2024-07-17
+  only**, via `scripts/run_trial_52wh.py` and nowhere else.
   **Phase A (data groundwork) CLOSED 2026-07-19 — A1–A4 all done** and
-  Stage 1–3 modules built + tested (see THE MACHINERY). **B2 spec text
-  DRAFTED 2026-07-19** (`governance/specs/SPEC-52WH-01.md`, status DRAFT —
-  binding only at B3 hash-freeze; next 52WH steps: B3 freeze when queue
-  allows, then Stage 4 enforcement + Stage 5 trial runner). Key facts:
+  Stage 1–3 modules built + tested (see THE MACHINERY). **Phase B CLOSED
+  2026-07-19 — B2 drafted, B3 frozen, Stage 4 enforcement built and verified
+  live. Next 52WH step: Stage 5 walk-forward engine, then C1**
+  (`run_trial_52wh.py` exits 3 today — gate passes, engine absent). Key facts:
   PIT habitat reconstructable from announce-safe **2018-01-25** (AMFI lists
   18/18 periods 2017H2→2026H1, zero gaps; announce = period_end + 25d
   ASSUMED, flagged per row; F&O fallback never triggers pre-cutoff);

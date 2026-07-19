@@ -267,3 +267,29 @@ gate — not the price zone — is what rejected the profitable counterfactuals.
 - Consequence: open unknown #4 (statutory cost verification) is CLOSED;
   src/costs_in.py is buildable and its acceptance test is the worked
   round-trip recomputation, not contract-note reconciliation.
+
+## 2026-07-19 — RULING 6: hash-freeze consumes no shadow slot (B3 executed)
+
+- The gating question at B3 was whether freezing SPEC-52WH-01 jumps the queue,
+  since 52WH sits behind SPEC-QFM-01 / SPEC-PEAD-01 (shadow cap 2) and
+  SPEC-AG-01.
+- FACT: the cap-2 constraint is written against the **shadow-book stage**
+  (CONTAMINATION_POLICY.md AMENDMENT B: pooling admits only sleeves that
+  individually survived their shadow-book stage; SPEC-52WH-01 §10 and
+  plan_52wh.md Phase D gate the sealed test on a slot opening). No governance
+  document conditions a *spec freeze* on slot availability.
+- FACT: plan_52wh.md B3 as written already said "pre-cutoff development may
+  proceed, no slot-jumping" — freezing is the precondition for that pre-cutoff
+  development (Phase C), not a step past it.
+- RULING: freezing makes the text binding and unlocks outcome contact on **dev
+  data < 2024-07-17 only**. It consumes no shadow slot. QFM + PEAD retain both;
+  AG-01 remains ahead of 52WH in the queue for the slot itself. Phase D sealed
+  pre-registration for 52WH still requires a slot to open.
+- Consequence: SPEC-52WH-01 frozen at sha256
+  4b58f285255db1b35bdf831aaaaa16aae6bde8bbf38987a501194bf89ddbbefc, register
+  row FREEZE-52WH-0001. The freeze row is explicitly NOT a trial (no outcome
+  observed); Phase C trials get their own rows and their own count toward the
+  register's cumulative total for SPA/deflated-Sharpe deflation.
+- ASSUMPTION flagged for the operator: if the intended reading of the cap was
+  ever "no family may even freeze until a slot frees", say so — the freeze
+  would then need a v2 spec to unwind, since a frozen spec cannot be edited.
