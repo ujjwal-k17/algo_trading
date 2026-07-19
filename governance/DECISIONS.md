@@ -243,3 +243,27 @@ gate — not the price zone — is what rejected the profitable counterfactuals.
   the human alert text (`:220-227`). ASSUMPTION: choosing DB semantics over
   alert semantics. If the desk actually trades partials, say so and this
   becomes a v2 change.
+
+## 2026-07-19 — RULING 5: A2 cost stack closed on web-verified schedule
+
+- FACT: statutory components verified from primary/published sources
+  (2026-07-19): STT delivery 0.10% buy AND sell, intraday 0.025% sell only;
+  NSE cash exchange outflow 0.00307%/side (₹306.99 txn + ₹0.01 IPFT = ₹307/cr,
+  circular NSE/FA/73061 dt 2026-02-27 effective 2026-03-01, filed at
+  governance/evidence/NSE_FA_73061_transaction_charges_effective_2026-03-01.pdf);
+  SEBI turnover fee ₹10/cr/side +18% GST; stamp duty buy-side only, delivery
+  0.015% / intraday 0.003%; GST 18% on (brokerage + exchange txn + SEBI + DP).
+  Cross-checked Zerodha vs Upstox published schedules; the one divergence
+  (exchange charge) resolved by the NSE circular — Upstox page stale.
+- ASSUMPTION (operator, 2026-07-19): the web-verified discount-broker schedule
+  equals what the actual contract note bills — brokerage delivery ₹0, intraday
+  min(0.03%, ₹20)/order; DP on delivery sell ₹15.34/scrip/day (GST-inclusive).
+  Contract-note line-by-line reconciliation WAIVED by operator. If a real
+  contract note later diverges, src/costs_in.py constants get a correction and
+  any trial run on the old constants is rerun before its result is cited.
+- Slippage is NOT part of this ruling — it stays an explicit separate
+  parameter (literature floor ≥0.05–0.10%/side; higher for mcap ranks
+  201–1000), never baked into the statutory constants.
+- Consequence: open unknown #4 (statutory cost verification) is CLOSED;
+  src/costs_in.py is buildable and its acceptance test is the worked
+  round-trip recomputation, not contract-note reconciliation.

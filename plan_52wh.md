@@ -39,10 +39,29 @@ Order matters: A1/A2/A3 are the blocking unknowns; A4 is build work that can sta
       table with an as-of query helper — qlib-style PIT schema
       `(instrument, field, period, announce_date, value)`.
       Fallback already pre-committed: F&O-eligible universe on >2-quarter gap.
-- [ ] **A2. Statutory cost stack verified vs a current contract note** (open unknown
-      #4). Broker + STT + exchange + stamp + GST + SEBI fees, delivery leg-by-leg.
-      Deliverable: cost constants module with the contract note filed as evidence;
-      supersedes the literature floor (₹20/order + 0.05–0.10% slippage).
+- [x] **A2. Statutory cost stack — CLOSED 2026-07-19** (open unknown #4) per
+      RULING 5 in `governance/DECISIONS.md`: statutory lines FACT-verified from
+      primary sources; broker lines closed on operator ASSUMPTION that the
+      web-verified schedule equals the contract note (reconciliation waived; a
+      later-diverging contract note triggers correction + rerun of affected
+      trials). Constants live in `src/costs_in.py`. Verified stack, NSE cash
+      equity, discount-broker retail schedule:
+      - STT: delivery 0.10% buy AND sell; intraday 0.025% sell only.
+      - NSE exchange txn charge: 0.00307%/side (₹306.99 txn + ₹0.01 IPFT = ₹307/cr;
+        circular NSE/FA/73061 dt 2026-02-27, effective 2026-03-01, filed at
+        `governance/evidence/NSE_FA_73061_transaction_charges_effective_2026-03-01.pdf`).
+      - SEBI turnover fee: ₹10/cr (0.0001%)/side, +18% GST.
+      - Stamp duty (buy side only): delivery 0.015%; intraday 0.003%.
+      - GST 18% on (brokerage + exchange txn + SEBI + DP fees).
+      - Brokerage (Zerodha schedule): delivery ₹0; intraday min(0.03%, ₹20)/order.
+      - DP charge on delivery sell: ₹15.34/scrip/day (Zerodha/CDSL; Upstox ₹20) —
+        broker-dependent, flat per scrip so ~0% at fund size.
+      - Worked round trip per ₹1L/side: DELIVERY ≈ ₹237.8 ≈ **0.238%** (statutory-only
+        ex-DP ex-brokerage ≈ 0.2225%); INTRADAY ≈ ₹82.7 ≈ **0.083%**. Slippage NOT
+        included — keep 0.05–0.10%+/side (more in the 201–1000 band) as a separate
+        parameter. Caveat: retail discount-broker basis; PMS/institutional
+        brokerage differs — revisit constants at the Phase 3 (fund-vehicle)
+        transition; C3 capacity analysis should stress higher friction.
 - [ ] **A3. TRI depth** (open unknown #5): NIFTY500 TRI, NIFTY100 TRI, Nifty200
       Momentum 30, Nifty Alpha 50 — how far back each series goes, from NSE/index
       vendor downloads. Benchmarks must cover the full dev window incl. 2018–2020

@@ -150,9 +150,12 @@ protocol.
   features-only work is free; no outcome contact before hash-freeze.
 - Open unknowns: PIT constituent depth (widened by 52WH to NIFTY500 /
   ranks 201–1000, not just NIFTY100), exchange filing-timestamp corpus
-  (now serves PEAD + 52WH event-exit), MCX bhavcopy history, statutory
-  cost verification vs current contract note, TRI download depth (incl.
-  NIFTY500 TRI + Nifty200 Momentum 30 / Alpha 50 factor indices).
+  (now serves PEAD + 52WH event-exit), MCX bhavcopy history, TRI download
+  depth (incl. NIFTY500 TRI + Nifty200 Momentum 30 / Alpha 50 factor
+  indices). CLOSED 2026-07-19: statutory cost stack (RULING 5,
+  `governance/DECISIONS.md`; constants in `src/costs_in.py`; broker lines
+  rest on an operator ASSUMPTION — contract-note reconciliation waived;
+  slippage remains a separate explicit parameter).
 
 ## ROADMAP (the path to the fund)
 
