@@ -88,6 +88,26 @@ protocol.
 - `scripts/run_paper_leg.py` / `build_nav.py` / `build_workspace.py` —
   settlement batches (ledger + rec universe), DERIVED NAV (refuses to
   approximate), gated pre-cutoff workspace.
+- **SPEC-52WH-01 Stage 1–2 stack** (built 2026-07-19, features-only —
+  outcome contact exists nowhere in these modules):
+  - `src/pit_universe.py` — PIT constituent store, rows `(symbol, field,
+    effective_date, announce_date, value, source [, isin])`; as-of queries
+    gate on announce_date through `data_gate.load` (a row announced ≥ the
+    seal cutoff is structurally invisible to research). Bands: `"201-1000"`
+    ranks or `"NIFTY500"` membership.
+  - `src/expr.py` — closed-grammar expression evaluator (`ref`,
+    `rolling_max`, `rolling_min`, `cs_rank`, arithmetic); the spec's
+    expression strings run through this and nothing else; unknown token =
+    hard `ExprError`.
+  - `src/signal_52wh.py` — canonical `NEARNESS_EXPR = "close /
+    rolling_max(high, 252)"`; cross-sectional rank within the PIT universe;
+    buckets Q1 (far-from-high) … Q5.
+  - `scripts/build_pit_universe.py` — staged A1 corpus → 
+    `data/reference/pit/pit_universe.parquet` + coverage/gap report.
+  - `scripts/build_price_panel.py` — ADJUSTED dev-window OHLC panel
+    (yfinance auto_adjust, research-door gated) →
+    `data/workspace/price_panel_52wh.parquet`; do not confuse with the
+    UNADJUSTED Tier 1 settlement fetches in `src/fetch_ohlc.py`.
 - `.githooks/pre-commit` — SEAL.md immutability + `data/sealed/` commit
   block. Fresh clones must run: `git config core.hooksPath .githooks`.
 
@@ -148,14 +168,26 @@ protocol.
   0.10 net → dead. Notes: `research.md` (outcome-blind, frozen record);
   execution + module blueprint: `plan_52wh.md` (living). Spec unfrozen —
   features-only work is free; no outcome contact before hash-freeze.
-- Open unknowns: PIT constituent depth (widened by 52WH to NIFTY500 /
-  ranks 201–1000, not just NIFTY100), exchange filing-timestamp corpus
-  (now serves PEAD + 52WH event-exit), MCX bhavcopy history, TRI download
-  depth (incl. NIFTY500 TRI + Nifty200 Momentum 30 / Alpha 50 factor
-  indices). CLOSED 2026-07-19: statutory cost stack (RULING 5,
-  `governance/DECISIONS.md`; constants in `src/costs_in.py`; broker lines
-  rest on an operator ASSUMPTION — contract-note reconciliation waived;
-  slippage remains a separate explicit parameter).
+  **Phase A (data groundwork) CLOSED 2026-07-19 — A1–A4 all done** and
+  Stage 1–2 modules built + tested (see THE MACHINERY). Key facts:
+  PIT habitat reconstructable from announce-safe **2018-01-25** (AMFI lists
+  18/18 periods 2017H2→2026H1, zero gaps; announce = period_end + 25d
+  ASSUMED, flagged per row; F&O fallback never triggers pre-cutoff);
+  adjusted panel 2015-01-01→2024-07-16, 1,197 symbols, split spot-checks
+  passed. OPEN CAVEAT: 215/1,412 fetch symbols unservable by yfinance
+  (delistings + renames, e.g. ZOMATO→ETERNAL) — build a rename map before
+  C1 and argue the residual survivorship hole's direction in the trial
+  write-up (details in `plan_52wh.md` A4).
+- Open unknowns (was five, now two): exchange filing-timestamp corpus
+  (serves PEAD + 52WH event-exit) and MCX bhavcopy history. CLOSED
+  2026-07-19: statutory cost stack (RULING 5, `governance/DECISIONS.md`;
+  constants in `src/costs_in.py`; broker lines rest on an operator
+  ASSUMPTION — contract-note reconciliation waived; slippage remains a
+  separate explicit parameter); PIT constituent depth (A1 — corpus +
+  store under `data/reference/pit/`, COVERAGE.md there); TRI depth (A3 —
+  six daily TRI series incl. NIFTY500 TRI from 1995 under
+  `data/reference/tri/`; Nifty200 Momentum 30 launched 2020-08-25, its
+  pre-launch history is vendor-backfilled — flag in any use).
 
 ## ROADMAP (the path to the fund)
 
@@ -187,7 +219,9 @@ New families must be low-turnover by design.
 ## ENVIRONMENT
 
 `.venv`: python 3.14, pandas 3.0.3, pytest 9.1.1, pyarrow 25.0.0,
-yfinance 1.5.1. Tests: `.venv/bin/python -m pytest tests/ -q` (42 passing).
+yfinance 1.5.1 (+ openpyxl, pypdf for A1 corpus parsing). Tests:
+`.venv/bin/python -m pytest tests/ -q` (88 passing).
 Data dirs (`data/sealed/`, `data/legacy_snapshot/`, `data/market/`,
-`data/derived/`) are gitignored — never push data. Remote:
+`data/derived/`, `data/reference/`, plus the bulk 52WH panel artifacts
+under `data/workspace/`) are gitignored — never push data. Remote:
 https://github.com/ujjwal-k17/algo_trading.

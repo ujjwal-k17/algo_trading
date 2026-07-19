@@ -31,14 +31,26 @@ the net-of-cost test the paper never ran.
 
 Order matters: A1/A2/A3 are the blocking unknowns; A4 is build work that can start now.
 
-- [ ] **A1. PIT constituent corpus — now to NIFTY500 / ranks-201–1000 depth.**
-      Raju's size table moved the target habitat from NIFTY100 to ranks 201–1000, so
-      open unknown #1 widens. Sources to exhaust: NSE index change press releases,
-      AMFI semi-annual mcap rank lists (published since 2018), NSE indexogram
-      archives. Deliverable: `(symbol, rank_band/index, effective_date, source)`
-      table with an as-of query helper — qlib-style PIT schema
-      `(instrument, field, period, announce_date, value)`.
-      Fallback already pre-committed: F&O-eligible universe on >2-quarter gap.
+- [x] **A1. PIT constituent corpus — ACQUIRED + STORE BUILT 2026-07-19.**
+      Corpus under `data/reference/pit/` (gitignored; manifest.csv + COVERAGE.md):
+      AMFI avg-mcap lists **18/18 semi-annual periods 2017H2 → 2026H1, zero gaps**
+      (2017H2 is the first list AMFI ever published — hard floor); 164 NSE/
+      niftyindices index-change press releases 2015-01-21 → 2026-07-17 (PDFs
+      archived; per-symbol add/drop extraction NOT yet parsed — four layout
+      generations); current constituent lists for 8 indices. Canonical store:
+      `staging/amfi_mcap_rank.csv` (89,895 rows) →
+      `scripts/build_pit_universe.py` → `pit_universe.parquet` (89,891 rows,
+      5,738 symbols), queried via `src/pit_universe.py` as-of helpers (gated on
+      announce_date; verified: last research-visible list is 2023H2, announced
+      2024-01-25). **Earliest reliable PIT date for the 201–1000 habitat:
+      announce-safe 2018-01-25** (effective 2017-12-31). Announce dates are
+      ASSUMED period_end + 25 calendar days (conservative vs all observed
+      publications; flagged `announce_basis` per row). F&O fallback never
+      triggers 2018 → cutoff. Caveats (COVERAGE.md §6): ~3% blank NSE symbols
+      in 2025H2/2026H1 top-1000 — join on ISIN (carried in the store) for
+      post-2025 periods; Wayback full-constituent anchors mostly unavailable
+      (pre-2019 NOT_FOUND, 2020+ throttle-blocked, retryable) so the
+      index-membership route to ~Apr-2016 stays unvalidated.
 - [x] **A2. Statutory cost stack — CLOSED 2026-07-19** (open unknown #4) per
       RULING 5 in `governance/DECISIONS.md`: statutory lines FACT-verified from
       primary sources; broker lines closed on operator ASSUMPTION that the
@@ -62,21 +74,48 @@ Order matters: A1/A2/A3 are the blocking unknowns; A4 is build work that can sta
         parameter. Caveat: retail discount-broker basis; PMS/institutional
         brokerage differs — revisit constants at the Phase 3 (fund-vehicle)
         transition; C3 capacity analysis should stress higher friction.
-- [ ] **A3. TRI depth** (open unknown #5): NIFTY500 TRI, NIFTY100 TRI, Nifty200
-      Momentum 30, Nifty Alpha 50 — how far back each series goes, from NSE/index
-      vendor downloads. Benchmarks must cover the full dev window incl. 2018–2020
-      and 2022 drawdowns.
-- [ ] **A4. PIT-clean adjusted price panel builder** for the dev window
-      (< 2024-07-17), through `src/data_gate.py` research door only. Split/bonus-
-      adjusted series used consistently for both close and rolling 252d high (the
-      ratio distorts on unadjusted highs). Output: gated parquet under
-      `data/workspace/`. yfinance is sanctioned; no broker calls.
+- [x] **A3. TRI depth — CLOSED 2026-07-19** (open unknown #5). Six daily TRI
+      series downloaded from niftyindices.com (204 chunked requests, zero
+      blocks) into `data/reference/tri/` (raw/ + manifest.csv + COVERAGE.md;
+      gitignored): NIFTY 500 TRI from 1995-01-01 (primary benchmark),
+      NIFTY 100 TRI from 2003, Nifty Alpha 50 TRI from 2003-12-31, Nifty200
+      Momentum 30 / Midcap 150 / Smallcap 250 TRI from 2005-04-01 — all to
+      2026-07-17, no gaps > 5 trading days. VERDICT: every series covers
+      2015-01-01 onward; 2018–2020 and 2022 drawdowns fully inside all six.
+      BACKFILL FLAGS (must accompany any later use): Nifty200 Momentum 30
+      launched 2020-08-25 (its entire pre-Aug-2020 history, incl. the
+      2018–2020 crash, is vendor back-computed); Alpha 50 launched 2012-11-19;
+      Midcap 150 / Smallcap 250 launched 2016-04-01; NIFTY 100 launched
+      2005-12-01. Bonus: source also returns a net-TRI (`NTR_Value`) column,
+      full history. Coverage-only check — no returns computed (outcome-blind).
+- [x] **A4. PIT-clean adjusted price panel — BUILT 2026-07-19**
+      (`scripts/build_price_panel.py` → `data/workspace/price_panel_52wh.parquet`):
+      2,298,250 rows, 1,197 symbols, 2015-01-01 → 2024-07-16, gated through the
+      research door (max date < cutoff verified). Fetch set = 1,412 symbols ever
+      holding research-visible mcap_rank ≤ 1000; per-symbol cache in
+      `data/workspace/ohlc_adj/`. Adjustment spot-checks passed: IRCTC 1:5
+      (2021-10-28) and NESTLEIND 1:10 (2024-01-05) splits show no price cliffs.
+      Integration smoke (features only): 2020-07-01 habitat = 725 PIT symbols,
+      580 with defined nearness, buckets balanced 116×5.
+      **OPEN CAVEAT — survivorship hole: 215/1,412 symbols (15%) unservable by
+      yfinance** (`data/workspace/price_panel_missing.txt`) — mostly delisted
+      (VIJAYABANK, WABCOINDIA…) but some are RENAMES recoverable via a symbol-
+      map (e.g. ZOMATO→ETERNAL, WELSPUNIND→WELSPUNLIV). Before C1: build a
+      rename map to recover what's recoverable, and the trial write-up must
+      quantify the remaining hole's direction (missing names skew toward
+      delistings — plausibly the far-from-high bucket the screen bets against,
+      i.e. the hole likely UNDERSTATES the effect but must be argued, not
+      assumed).
 
 ## Phase B — Spec authoring & freeze (still outcome-blind)
 
-- [ ] **B1. Minimal expression evaluator** over gate-emitted frames (qlib lesson:
-      signal rules as expression strings, not prose — the string is the artifact
-      that gets hashed). Small: `Ref`, `RollingMax`, cross-sectional `Rank` suffice.
+- [x] **B1. Minimal expression evaluator — DONE 2026-07-19** (`src/expr.py`,
+      `tests/test_expr.py`): closed grammar `ref` / `rolling_max` / `rolling_min` /
+      `cs_rank` / arithmetic over long panels; unknown token = hard `ExprError`.
+      Built alongside the rest of Stage 1–2 on synthetic frames:
+      `src/pit_universe.py` (+ `scripts/build_pit_universe.py` ingester),
+      `src/signal_52wh.py`, `scripts/build_price_panel.py` — all with
+      no-look-ahead acceptance tests (suite 42 → 88 passing).
 - [ ] **B2. Write SPEC-52WH-01 as a frozen spec document** containing, verbatim as
       expression strings + parameters:
       - Signal: `close / rolling_max(high, 252)`, cross-sectional rank.

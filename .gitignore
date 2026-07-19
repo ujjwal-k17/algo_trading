@@ -6,3 +6,9 @@ data/sealed/
 data/legacy_snapshot/
 data/derived/
 data/market/
+data/reference/
+# 52WH panel artifacts: bulk price data, never pushed (workspace keeps only
+# the small deliberately-tracked parquets like fills/recs)
+data/workspace/ohlc_adj/
+data/workspace/price_panel_52wh.parquet
+data/workspace/price_panel_missing.txt
