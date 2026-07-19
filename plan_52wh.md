@@ -97,15 +97,26 @@ Order matters: A1/A2/A3 are the blocking unknowns; A4 is build work that can sta
       (2021-10-28) and NESTLEIND 1:10 (2024-01-05) splits show no price cliffs.
       Integration smoke (features only): 2020-07-01 habitat = 725 PIT symbols,
       580 with defined nearness, buckets balanced 116×5.
-      **OPEN CAVEAT — survivorship hole: 215/1,412 symbols (15%) unservable by
-      yfinance** (`data/workspace/price_panel_missing.txt`) — mostly delisted
-      (VIJAYABANK, WABCOINDIA…) but some are RENAMES recoverable via a symbol-
-      map (e.g. ZOMATO→ETERNAL, WELSPUNIND→WELSPUNLIV). Before C1: build a
-      rename map to recover what's recoverable, and the trial write-up must
-      quantify the remaining hole's direction (missing names skew toward
-      delistings — plausibly the far-from-high bucket the screen bets against,
-      i.e. the hole likely UNDERSTATES the effect but must be argued, not
-      assumed).
+      **Survivorship hole NARROWED 2026-07-19 — rename map built**
+      (`scripts/build_rename_map.py`; NSE symbol-change master →
+      `data/reference/rename/rename_map.csv`): of the 215 unservable symbols,
+      120 had renames, **113 recovered** (fetched under the current ticker,
+      cached under the ORIGINAL symbol so PIT joins work; ZOMATO→ETERNAL,
+      TATAGLOBAL→TATACONSUM, chains followed). Recovered old-label series are
+      **truncated at the rename effective date** — otherwise the same company
+      is rankable under both labels post-rename (stale AMFI old-label rank
+      stays as-of visible) and double-counts in the cross-section; verified
+      TATAGLOBAL ends 2020-02-26, WELSPUNIND 2023-12-13. Also caught
+      BAJAJAUTO as a one-off AMFI spelling artifact of BAJAJ-AUTO (2020H2
+      list only) — correctly refused, no duplicate. Rebuilt panel: 2,479,338
+      rows, **1,310 symbols**; smoke 2020-07-01 habitat ranked coverage
+      580 → 626 of 725; buckets balanced 125×4+126.
+      **RESIDUAL CAVEAT for the C1 write-up: 102/1,412 (7.2%, was 15%) still
+      unservable** (95 no rename found + 7 renamed-but-unservable, mostly
+      merger absorptions e.g. BHUSANSTL→TATASTLBSL) — skews toward delistings,
+      plausibly the far-from-high bucket the screen bets against, i.e. the
+      hole likely UNDERSTATES the effect; must be argued in the write-up with
+      the then-current `price_panel_missing.txt`, not assumed.
 
 ## Phase B — Spec authoring & freeze (still outcome-blind)
 
@@ -116,7 +127,9 @@ Order matters: A1/A2/A3 are the blocking unknowns; A4 is build work that can sta
       `src/pit_universe.py` (+ `scripts/build_pit_universe.py` ingester),
       `src/signal_52wh.py`, `scripts/build_price_panel.py` — all with
       no-look-ahead acceptance tests (suite 42 → 88 passing).
-- [ ] **B2. Write SPEC-52WH-01 as a frozen spec document** containing, verbatim as
+- [x] **B2. Spec text DRAFTED 2026-07-19** → `governance/specs/SPEC-52WH-01.md`
+      (status DRAFT — binding only at B3; editable until the hash is recorded).
+      Contains, verbatim as
       expression strings + parameters:
       - Signal: `close / rolling_max(high, 252)`, cross-sectional rank.
       - Role: **negative screen** (exclude bottom quintile/quartile
@@ -195,13 +208,13 @@ The returns join and any performance number exist only inside the trial runner
 | `src/expr.py` | Minimal expression evaluator over gate-emitted frames: `Ref`, `RollingMax`, `CSRank`, arithmetic. The spec's expression strings run through this and nothing else. | pytest vs hand-computed frames; unknown token → hard error (no silent prose rules). |
 | `src/signal_52wh.py` | `nearness = close / rolling_max(high, 252)` at each rebalance date; cross-sectional rank within the PIT universe as-of that date; emits bucket labels (Q1–Q5). Pure function, features only. | No-look-ahead test: signal at date t unchanged when post-t rows are appended. |
 
-### Stage 3 — Screen & portfolio layer (still outcome-blind)
+### Stage 3 — Screen & portfolio layer (still outcome-blind) — BUILT 2026-07-19
 
 | Artifact | What it does | Acceptance |
 |---|---|---|
-| `src/screen_52wh.py` | Applies the negative screen: given any candidate book/universe band, drops far-from-high bucket names; optional tilt weights as diagnostic. | Screen output is a set difference + weights; zero return columns in its schema. |
-| `src/costs_in.py` | Cost stack from the verified contract note (Phase A2): brokerage, STT, exchange, stamp, GST, SEBI, slippage parameter — per leg. | Constants cross-checked line-by-line against the filed contract note; literature floor kept as a named fallback. |
-| `src/rebalance.py` | Quarterly rebalance calendar, holdings diff → turnover computation. | Turnover on a synthetic book matches hand calc. |
+| `src/screen_52wh.py` ✅ | Applies the negative screen: given any candidate book/universe band, drops far-from-high bucket names (`screen_book` / `screened_symbols`); `tilt_weights` as diagnostic only. Unranked-name policy explicit (`keep` default / `drop` sensitivity). | DONE: set difference + weights; zero return columns in schema; a signal frame carrying ANY non-feature column (e.g. a joined return) is a hard error — the outcome-blind wall is structural. `tests/test_screen_52wh.py` (10). |
+| `src/costs_in.py` ✅ | Cost stack per RULING 5 (Phase A2): brokerage, STT, exchange, stamp, GST, SEBI per leg; slippage a separate named parameter. | DONE 2026-07-19 (built with A2): `tests/test_costs_in.py`. |
+| `src/rebalance.py` ✅ | Rebalance calendar (Q default, M/H sensitivities; last trading day per period from the panel's own dates — partial final period included, trial runner decides), `trades` diff, ONE-WAY turnover = sum(\|Δw\|)/2. | DONE: turnover on a synthetic book matches hand calc; calendar respects supplied holidays. `tests/test_rebalance.py` (9). |
 
 ### Stage 4 — Governance enforcement
 

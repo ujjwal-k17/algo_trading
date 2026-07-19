@@ -108,6 +108,20 @@ protocol.
     (yfinance auto_adjust, research-door gated) →
     `data/workspace/price_panel_52wh.parquet`; do not confuse with the
     UNADJUSTED Tier 1 settlement fetches in `src/fetch_ohlc.py`.
+- **SPEC-52WH-01 Stage 3 stack** (built 2026-07-19, still features-only):
+  - `src/screen_52wh.py` — the negative screen: `screen_book` /
+    `screened_symbols` drop excluded-bucket names from any candidate book and
+    renormalize (unranked-name policy explicit); `tilt_weights` is a
+    diagnostic only. Structural outcome-blind wall: a signal frame carrying
+    ANY column beyond {nearness, cs_rank, bucket} is a hard error.
+  - `src/rebalance.py` — rebalance calendar from the panel's own trading
+    dates (Q default, M/H sensitivities; last trading day per period),
+    `trades` weight diffs, ONE-WAY turnover = sum(|Δw|)/2.
+  - `scripts/build_rename_map.py` — NSE symbol-change master →
+    `data/reference/rename/rename_map.csv`; refetches renamed symbols under
+    the current ticker, cached under the ORIGINAL symbol, TRUNCATED at the
+    rename effective date (prevents dual-label double-counting in the
+    cross-section).
 - `.githooks/pre-commit` — SEAL.md immutability + `data/sealed/` commit
   block. Fresh clones must run: `git config core.hooksPath .githooks`.
 
@@ -140,6 +154,11 @@ protocol.
   tape earns at most ONE forward re-test — the cost-based kill verdict
   stands regardless.
 - `DECISIONS.md`: every ruling with FACT/ASSUMPTION tags — the audit trail.
+- `specs/`: per-family frozen specs. A spec is BINDING only once its `sha256`
+  is recorded alongside it and its register row exists (same commit); until
+  then the file carries a DRAFT banner and may be edited freely. After freeze,
+  changes require a new versioned spec, never an edit — the SEAL_v2 pattern.
+  Currently: `SPEC-52WH-01.md` (DRAFT, unfrozen).
 - `SOP_OF_RECORD.md`, `LEGACY_PIN.md`, `README_overlay.md`; repo-root
   `SETUP_OF_RECORD.md` = full inventory + open items.
 
@@ -169,15 +188,19 @@ protocol.
   execution + module blueprint: `plan_52wh.md` (living). Spec unfrozen —
   features-only work is free; no outcome contact before hash-freeze.
   **Phase A (data groundwork) CLOSED 2026-07-19 — A1–A4 all done** and
-  Stage 1–2 modules built + tested (see THE MACHINERY). Key facts:
+  Stage 1–3 modules built + tested (see THE MACHINERY). **B2 spec text
+  DRAFTED 2026-07-19** (`governance/specs/SPEC-52WH-01.md`, status DRAFT —
+  binding only at B3 hash-freeze; next 52WH steps: B3 freeze when queue
+  allows, then Stage 4 enforcement + Stage 5 trial runner). Key facts:
   PIT habitat reconstructable from announce-safe **2018-01-25** (AMFI lists
   18/18 periods 2017H2→2026H1, zero gaps; announce = period_end + 25d
   ASSUMED, flagged per row; F&O fallback never triggers pre-cutoff);
-  adjusted panel 2015-01-01→2024-07-16, 1,197 symbols, split spot-checks
-  passed. OPEN CAVEAT: 215/1,412 fetch symbols unservable by yfinance
-  (delistings + renames, e.g. ZOMATO→ETERNAL) — build a rename map before
-  C1 and argue the residual survivorship hole's direction in the trial
-  write-up (details in `plan_52wh.md` A4).
+  adjusted panel 2015-01-01→2024-07-16, **1,310 symbols** (rename map
+  2026-07-19 recovered 113 of the 215 yfinance-unservable names, old-label
+  series truncated at rename effective date to prevent dual-label
+  double-counting), split spot-checks passed. RESIDUAL CAVEAT: 102/1,412
+  (7.2%) still unservable, skewed toward delistings — the C1 write-up must
+  argue the survivorship hole's direction (details in `plan_52wh.md` A4).
 - Open unknowns (was five, now two): exchange filing-timestamp corpus
   (serves PEAD + 52WH event-exit) and MCX bhavcopy history. CLOSED
   2026-07-19: statutory cost stack (RULING 5, `governance/DECISIONS.md`;
@@ -220,7 +243,7 @@ New families must be low-turnover by design.
 
 `.venv`: python 3.14, pandas 3.0.3, pytest 9.1.1, pyarrow 25.0.0,
 yfinance 1.5.1 (+ openpyxl, pypdf for A1 corpus parsing). Tests:
-`.venv/bin/python -m pytest tests/ -q` (88 passing).
+`.venv/bin/python -m pytest tests/ -q` (107 passing).
 Data dirs (`data/sealed/`, `data/legacy_snapshot/`, `data/market/`,
 `data/derived/`, `data/reference/`, plus the bulk 52WH panel artifacts
 under `data/workspace/`) are gitignored — never push data. Remote:
