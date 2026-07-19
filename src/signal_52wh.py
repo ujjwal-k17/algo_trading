@@ -32,6 +32,29 @@ def nearness_panel(
     )
 
 
+def rank_row(row: pd.Series, universe, *, n_buckets: int = N_BUCKETS) -> pd.DataFrame:
+    """Cross-sectional rank + buckets for one date's nearness row.
+
+    Extracted from ``signal_at`` so a walk-forward run can evaluate the
+    nearness panel ONCE and rank each rebalance date off it, instead of
+    recomputing a 252-day rolling max per date. Both paths share this code —
+    the trial runner cannot silently drift from the canonical ranking
+    (asserted in tests/test_signal_52wh.py).
+    """
+    if n_buckets < 2:
+        raise ValueError("n_buckets must be >= 2")
+    row = row.loc[row.index.isin(set(universe))].dropna()
+    out = row.rename("nearness").to_frame()
+    out["cs_rank"] = out["nearness"].rank(pct=True)
+    # -1e-9 guards float noise: a pct of exactly k/n must land in Qk, not Qk+1.
+    out["bucket"] = [
+        f"Q{min(n_buckets, max(1, math.ceil(p * n_buckets - 1e-9)))}"
+        for p in out["cs_rank"]
+    ]
+    out.index.name = "symbol"
+    return out.sort_values("cs_rank")
+
+
 def signal_at(
     panel: pd.DataFrame,
     universe: list[str],
@@ -52,20 +75,8 @@ def signal_at(
     Returns a frame indexed by symbol: ``nearness``, ``cs_rank`` (percentile
     in (0, 1]), ``bucket`` (Q1 = farthest from high .. Qn = nearest).
     """
-    if n_buckets < 2:
-        raise ValueError("n_buckets must be >= 2")
     date = pd.Timestamp(date)
     wide = nearness_panel(panel, date_col=date_col, symbol_col=symbol_col)
     if date not in wide.index:
         raise ValueError(f"no panel row at {date.date()} — not a trading date?")
-    row = wide.loc[date]
-    row = row.loc[row.index.isin(set(universe))].dropna()
-    out = row.rename("nearness").to_frame()
-    out["cs_rank"] = out["nearness"].rank(pct=True)
-    # -1e-9 guards float noise: a pct of exactly k/n must land in Qk, not Qk+1.
-    out["bucket"] = [
-        f"Q{min(n_buckets, max(1, math.ceil(p * n_buckets - 1e-9)))}"
-        for p in out["cs_rank"]
-    ]
-    out.index.name = "symbol"
-    return out.sort_values("cs_rank")
+    return rank_row(wide.loc[date], universe, n_buckets=n_buckets)

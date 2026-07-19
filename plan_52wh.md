@@ -173,7 +173,14 @@ Order matters: A1/A2/A3 are the blocking unknowns; A4 is build work that can sta
 
 ## Phase C — Pre-cutoff development (registered trials, post-freeze only)
 
-- [ ] **C1. Primary walk-forward** on dev data < 2024-07-17, spanning ≥ one full
+- [ ] **C1. Primary walk-forward — HARNESS READY, AWAITING AUTHORIZATION.**
+      Everything is built; the run itself is the trial. To execute: append a
+      `C1-52WH-0001` register row (data_tier `dev`) stating the pre-registered
+      parameters, commit it, then
+      `.venv/bin/python scripts/run_trial_52wh.py --trial-id C1-52WH-0001`.
+      The gate refuses until that row exists — deliberately, so the trial count
+      cannot be incremented by accident. Spec below unchanged:
+      Primary walk-forward on dev data < 2024-07-17, spanning ≥ one full
       bull-bear cycle (2018–2020 crash and 2022 drawdown included), net of the A2
       cost stack at spec'd turnover, deflated Sharpe / SPA against the register's
       trial count. Screen framing: does excluding the far-from-high bucket improve
@@ -237,16 +244,34 @@ sails past the hook, so the runner re-verifies at the moment of outcome contact.
 | `src/spec_guard.py` ✅ | Run-time gate: `verify_frozen` (live sha256 of raw bytes == recorded) + `require_trial_row` (trial pre-registered) → `preflight` returns a provenance stamp. The runner never writes its own register row — that would make the check circular. | DONE: `tests/test_spec_guard.py` (6), incl. a live assertion that the real SPEC-52WH-01 is frozen and its register row cites the same hash. |
 | `scripts/run_trial_52wh.py` ✅ | The ONLY place returns join signals. Preflight runs BEFORE any panel is read, so a failed gate cannot leak a glance at outcomes. Exit 2 = refused, 3 = Stage 5 engine not built. | DONE: verified live — unregistered trial refused (2); registered preflight passes (0); tampering with the real spec by one comment line → HASH MISMATCH refusal. |
 
-### Stage 5 — Trial harness (post-freeze only)
+### Stage 5 — Trial harness — BUILT 2026-07-19 (NOT YET RUN)
 
-- Walk-forward engine: expanding/rolling windows over dev data incl. 2018–2020 and
-  2022; net returns via `costs_in.py` at realised turnover; IR vs NIFTY500 TRI;
-  maxDD; EW-vs-MW and liquidity-band sensitivity.
-- Inference: stationary-bootstrap Hansen SPA + deflated Sharpe implemented
-  in-repo against the register's trial count (no external backtest framework —
-  qlib rejection stands).
-- Outputs to `data/derived/trials/52wh/` (gitignored); summary tables cited into
-  `DECISIONS.md` with FACT tags.
+Built and tested on synthetic panels only. **No outcome contact has occurred:**
+running the engine against the real panel IS C1, and C1 needs its own
+pre-registered register row + operator authorization. The gate currently
+refuses `C1-52WH-0001` because that row does not exist.
+
+| Artifact | What it does | Acceptance |
+|---|---|---|
+| `src/backtest_52wh.py` ✅ | The contamination boundary — the only module that joins returns to signals, and it refuses to run without a `spec_guard.preflight` stamp (re-verified inside, so a hand-built dict cannot open it). Screened vs unscreened EW band book, same universe/dates/costs; signal at rebalance date, execution next session; weights DRIFT between rebalances so turnover is measured against the drifted book, not target-to-target. | `tests/test_backtest_52wh.py` (14): no-look-ahead (appending future rows leaves history identical), execution lags signal, inception turnover = 0.5 one-way, costs never improve a return, monthly costs > quarterly, higher slippage strictly lowers net, forged/absent stamp refused. |
+| `src/metrics.py` ✅ | Descriptive (ann return/vol, Sharpe, IR, maxDD, skew, kurtosis) + inference: Deflated Sharpe (Bailey–López de Prado) and Hansen SPA on a Politis–Romano stationary bootstrap, charged against the register's CUMULATIVE trial count. No scipy — Acklam inverse-normal. | `tests/test_metrics.py` (14): SPA does not reject noise, does reject a real edge, and gets HARDER with more searched models; DSR falls as trial count rises. |
+| `scripts/run_trial_52wh.py` ✅ | Full C1 path: research-door panel load → walk-forward → NIFTY500 TRI scoring → §8 kill line → artifacts in `data/derived/trials/52wh/` → append-only register result row. Sensitivities exposed as flags (`--freq`, `--exclude-buckets`, `--unranked-policy`, `--slippage-per-side`, `--band`). | `tests/test_run_trial_52wh.py` (7), synthetic: kill line fires on a null screen, survives a real one, turnover bust kills independently, trial count excludes bookkeeping rows. |
+
+**Two defects the tests caught, both fixed and regression-tested:**
+1. `metrics.sharpe` returned ~7e16 for a constant series — `np.std` of identical
+   values is ~1e-19, not 0, so the `== 0` guard never fired. Now `_VOL_EPS`.
+2. SPA returned p = 1.000 against an overwhelming edge when the return
+   differential had zero variance (unstudentizable), which the kill line then
+   read as DEAD. SPA now reports `degenerate_models` and the kill line returns
+   **INCONCLUSIVE** rather than blaming the strategy for a modelling artifact —
+   but deterministic kills (net IR ≤ 0, turnover bust) are never softened,
+   since spec §5 makes a budget bust dead regardless of gross.
+
+**Known gap, deliberately not faked:** spec §7 asks for an EW-vs-MW sensitivity.
+The PIT store carries `mcap_rank` only — the A1 ingest dropped AMFI's absolute
+average-mcap column — so `weighting="MW"` raises `NotImplementedError` naming
+the blocker rather than substituting a rank-derived proxy. Re-ingesting that
+column is a prerequisite for claiming that sensitivity.
 
 ### Sequencing & dependencies
 

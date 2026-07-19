@@ -122,8 +122,30 @@ protocol.
     the current ticker, cached under the ORIGINAL symbol, TRUNCATED at the
     rename effective date (prevents dual-label double-counting in the
     cross-section).
-- `.githooks/pre-commit` — SEAL.md immutability + `data/sealed/` commit
-  block. Fresh clones must run: `git config core.hooksPath .githooks`.
+- **SPEC-52WH-01 Stage 4–5 stack** (built 2026-07-19 — Stage 5 is the FIRST
+  outcome-touching code in the repo, and it has not been run):
+  - `src/spec_guard.py` — run-time freeze gate: `verify_frozen` (live sha256 ==
+    recorded) + `require_trial_row` (trial pre-registered) → `preflight`.
+  - `src/backtest_52wh.py` — THE contamination boundary; the only module that
+    joins returns to signals. Refuses without a preflight stamp (re-verified
+    internally). Screened vs unscreened EW band book; signal at rebalance date,
+    execution next session; weights drift between rebalances so turnover is
+    measured against the drifted book. Missing-price days FREEZE a position at
+    0% and are counted in `frozen_symbol_days` — conservative for the
+    unscreened control, so it understates the screen's benefit.
+    `weighting="MW"` raises `NotImplementedError`: the PIT store kept
+    `mcap_rank` only, so spec §7's EW-vs-MW sensitivity is BLOCKED until AMFI's
+    absolute avg-mcap column is re-ingested (no rank proxy — that would be an
+    invented number).
+  - `src/metrics.py` — IR/Sharpe/maxDD/skew + Deflated Sharpe and Hansen SPA
+    (Politis–Romano stationary bootstrap), charged against the register's
+    cumulative trial count. No scipy (Acklam inverse-normal).
+  - `scripts/run_trial_52wh.py` — the C1 door: research-door panel → walk-forward
+    → NIFTY500 TRI scoring → §8 kill line → `data/derived/trials/52wh/` →
+    append-only register result row. Sensitivities are flags.
+- `.githooks/pre-commit` — SEAL.md immutability + `data/sealed/` commit block +
+  frozen-spec immutability (spec edits AND recorded-hash rewrites/deletions).
+  Fresh clones must run: `git config core.hooksPath .githooks`.
 
 ## KEY FACTS AND PINS
 
@@ -196,10 +218,11 @@ protocol.
   ahead of 52WH. Outcome contact is now unlocked for **dev data < 2024-07-17
   only**, via `scripts/run_trial_52wh.py` and nowhere else.
   **Phase A (data groundwork) CLOSED 2026-07-19 — A1–A4 all done** and
-  Stage 1–3 modules built + tested (see THE MACHINERY). **Phase B CLOSED
-  2026-07-19 — B2 drafted, B3 frozen, Stage 4 enforcement built and verified
-  live. Next 52WH step: Stage 5 walk-forward engine, then C1**
-  (`run_trial_52wh.py` exits 3 today — gate passes, engine absent). Key facts:
+  Stage 1–3 modules built + tested (see THE MACHINERY). **Phase B CLOSED + Stages 4-5 BUILT
+  2026-07-19. Next 52WH step: C1, which needs an operator-authorized
+  `C1-52WH-0001` register row — the harness is ready and refuses to run
+  without it.** NO OUTCOME CONTACT HAS OCCURRED: every Stage 5 test runs on
+  synthetic panels. Key facts:
   PIT habitat reconstructable from announce-safe **2018-01-25** (AMFI lists
   18/18 periods 2017H2→2026H1, zero gaps; announce = period_end + 25d
   ASSUMED, flagged per row; F&O fallback never triggers pre-cutoff);
