@@ -78,6 +78,29 @@ def fetch_symbol(symbol: str) -> pd.DataFrame | None:
     return df
 
 
+def drop_non_trading_dates(panel: pd.DataFrame, quorum: float = 0.10):
+    """Drop dates where almost no symbol traded — they are not NSE sessions.
+
+    yfinance emits placeholder rows on exchange holidays for some symbols:
+    open == high == low == close with volume 0. They are a rounding error by
+    row count (132 of 2.48M in the 2026-07-19 panel, 0.005%) and catastrophic
+    by effect. Pivoting to a wide frame turns each such date into a NaN row for
+    every OTHER symbol, and ``rolling_max(high, 252)`` uses ``min_periods=252``,
+    so ONE NaN in the trailing window blocks nearness entirely. Thirty-three
+    scattered holiday dates ending 2017-10-20 pushed the first defined nearness
+    to 2018-10-26 instead of 2016-01-08 — silently destroying ~3 years of
+    signal and leaving the first rebalances unscreened.
+
+    A real session has thousands of symbols trading; a holiday artifact has a
+    handful. Anything below ``quorum`` of the median daily symbol count is not
+    a session. Returns ``(clean_panel, dropped_dates)``.
+    """
+    counts = panel.groupby("date")["symbol"].size()
+    threshold = counts.median() * quorum
+    bad = counts.index[counts < threshold]
+    return panel.loc[~panel["date"].isin(set(bad))].copy(), pd.DatetimeIndex(bad)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--symbols", type=Path, help="file of NSE symbols, one per line")
@@ -103,6 +126,14 @@ def main() -> None:
 
     panel = data_gate.load(pd.concat(frames, ignore_index=True), "date")
     assert panel["date"].max() < data_gate.SEAL_CUTOFF  # gate-enforced
+
+    panel, dropped = drop_non_trading_dates(panel)
+    if len(dropped):
+        print(f"dropped {len(dropped)} non-session dates (yfinance holiday "
+              f"placeholders): {dropped.min().date()} → {dropped.max().date()}")
+        for d in dropped:
+            print(f"  {d.date()}")
+
     panel.to_parquet(PANEL, index=False)
     print(
         f"wrote {len(panel)} rows, {panel['symbol'].nunique()} symbols, "

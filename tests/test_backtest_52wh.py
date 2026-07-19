@@ -188,3 +188,45 @@ def test_higher_slippage_strictly_lowers_net_returns():
         panel, store, stamp=REAL_STAMP, slippage_per_side=0.0050, verbose=False)
     assert (dear["arms"]["screened"].net_returns.sum()
             < cheap["arms"]["screened"].net_returns.sum())
+
+
+# --- regression: the defect that compromised C1-52WH-0001 --------------------
+
+def test_signal_starvation_is_a_hard_error_not_a_silent_no_op():
+    """A holiday placeholder row blocks rolling_max(min_periods=252) for every
+    other symbol, leaving the screen a no-op. C1-52WH-0001 shipped that way."""
+    syms = [f"S{i}" for i in range(12)]
+    panel = _panel(syms, n_days=900)
+    # One extra date on which a single symbol has a flat, zero-volume row --
+    # exactly the yfinance holiday artifact found in the real panel.
+    holiday = panel["date"].min() + pd.Timedelta(days=400)
+    ghost = pd.DataFrame([{ "date": holiday, "symbol": "S0", "open": 100.0,
+                            "high": 100.0, "low": 100.0, "close": 100.0,
+                            "volume": 0 }])
+    poisoned = pd.concat([panel[panel["date"] != holiday], ghost], ignore_index=True)
+    with pytest.raises(ValueError, match="signal starvation"):
+        backtest_52wh.run_walk_forward(
+            poisoned, _pit_store(syms), stamp=REAL_STAMP, verbose=False
+        )
+
+
+def test_drop_non_trading_dates_removes_holiday_placeholders():
+    import importlib.util
+    from pathlib import Path
+    repo = Path(__file__).resolve().parents[1]
+    spec = importlib.util.spec_from_file_location(
+        "build_price_panel", repo / "scripts" / "build_price_panel.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    syms = [f"S{i}" for i in range(20)]
+    panel = _panel(syms, n_days=300)
+    holiday = panel["date"].min() + pd.Timedelta(days=500)
+    ghost = pd.DataFrame([{ "date": holiday, "symbol": "S0", "open": 100.0,
+                            "high": 100.0, "low": 100.0, "close": 100.0,
+                            "volume": 0 }])
+    clean, dropped = mod.drop_non_trading_dates(
+        pd.concat([panel, ghost], ignore_index=True))
+    assert list(dropped) == [holiday]
+    assert holiday not in set(clean["date"])
+    assert len(clean) == len(panel), "real sessions must survive untouched"

@@ -186,6 +186,7 @@ def run_walk_forward(
     weighting: str = "EW",
     book_value: float = DEFAULT_BOOK_VALUE,
     slippage_per_side: float = costs_in.SLIPPAGE_FLOOR_PER_SIDE,
+    min_ranked_frac: float = 0.5,
     verbose: bool = True,
 ) -> dict:
     """Run the screened-vs-unscreened walk-forward. Returns both arms + a schedule.
@@ -257,6 +258,26 @@ def run_walk_forward(
 
     if not schedule:
         raise ValueError("no executable rebalances")
+
+    # A rebalance where few names carry a defined nearness screens (almost)
+    # nothing: the two arms silently become the same book and the trial reports
+    # a null as if it were a measurement. C1-52WH-0001 shipped exactly this —
+    # 33 yfinance holiday placeholder rows blocked the 252d rolling max, three
+    # rebalances ran with ranked=0, and nothing objected. Fail loudly instead.
+    starved = [s for s in schedule
+               if s["tradeable"] and s["ranked"] / s["tradeable"] < min_ranked_frac]
+    if starved:
+        first, worst = starved[0], min(starved, key=lambda s: s["ranked"] / s["tradeable"])
+        raise ValueError(
+            f"signal starvation at {len(starved)}/{len(schedule)} rebalances: "
+            f"ranked/tradeable < {min_ranked_frac:.0%} "
+            f"(first {first['signal_date'].date()}: {first['ranked']}/{first['tradeable']}; "
+            f"worst {worst['signal_date'].date()}: {worst['ranked']}/{worst['tradeable']}). "
+            "The screen would be a no-op at these dates and the arms identical. "
+            "Usual cause: NaN rows in the wide panel blocking rolling_max's "
+            "min_periods=252 — check for non-session dates "
+            "(scripts/build_price_panel.py::drop_non_trading_dates)."
+        )
 
     sim_dates = dates[dates >= schedule[0]["exec_date"]]
     arms = {}
