@@ -123,7 +123,7 @@ protocol.
 - `SOP_OF_RECORD.md`, `LEGACY_PIN.md`, `README_overlay.md`; repo-root
   `SETUP_OF_RECORD.md` = full inventory + open items.
 
-## CURRENT STATE (as of 2026-07-18)
+## CURRENT STATE (as of 2026-07-19)
 
 - Paper leg 25/25 settled: **ENTERED (gate-respecting headline) 11 recs =
   −1.32R**; ASSUMED_ENTRY 14 recs = +6.50R (tradeability audit: 12/14
@@ -135,11 +135,51 @@ protocol.
 - Advancing Tier 2 candidates: SPEC-QFM-01 (fundamental deltas, shadow slot
   1), SPEC-PEAD-01 (earnings drift, slot 2 — its CAR study is its one Tier 2
   trial, only after spec hash-freeze), SPEC-AG-01 (MCX Silver carry, queued
-  behind the 2-shadow cap). PIT fallback pre-committed (NIFTY100 →
+  behind the 2-shadow cap), SPEC-52WH-01 (52-week-high negative screen,
+  queued behind AG-01). PIT fallback pre-committed (NIFTY100 →
   F&O-eligible on >2-quarter gap).
-- Open unknowns: NIFTY100 PIT constituent depth, exchange filing-timestamp
-  corpus, MCX bhavcopy history, statutory cost verification vs current
-  contract note, TRI download depth.
+- **SPEC-52WH-01** (from the 2026-07-18 external-research session): the
+  breakout family reframed around the cross-sectional 52-week-high effect
+  (Raju 2023 — long leg alone does NOT beat index; the edge is a NEGATIVE
+  screen: never hold far-from-high names). Habitat mcap ranks 201–1000;
+  quarterly rebalance (slow decay); regime overlay mandatory (−1.5 skew);
+  conditioning list closed at 5 (regime, volume-confirm, extension,
+  earnings-proximity, LODR event-exit). Kill line: net IR ≤ 0 or SPA p >
+  0.10 net → dead. Notes: `research.md` (outcome-blind, frozen record);
+  execution + module blueprint: `plan_52wh.md` (living). Spec unfrozen —
+  features-only work is free; no outcome contact before hash-freeze.
+- Open unknowns: PIT constituent depth (widened by 52WH to NIFTY500 /
+  ranks 201–1000, not just NIFTY100), exchange filing-timestamp corpus
+  (now serves PEAD + 52WH event-exit), MCX bhavcopy history, statutory
+  cost verification vs current contract note, TRI download depth (incl.
+  NIFTY500 TRI + Nifty200 Momentum 30 / Alpha 50 factor indices).
+
+## ROADMAP (the path to the fund)
+
+Phase 1 — live window (2026-06-29 → read date 2026-09-27):
+1. **Start decision-time overlay logging NOW** — most urgent; AB_PREREG
+   analyses 2–4 have n=0 until it starts and lost days are unrecoverable.
+2. Keep nightly ingest + settlement + NAV running untouched.
+3. Read the four A/B analyses ONCE on 2026-09-27. Prize = validated
+   measurement stack + verdict on overlay skill; legacy kill stands.
+
+Phase 2 — Tier 2 pipeline (parallel):
+4. Close the five data unknowns (they gate honest testing).
+5. Verify statutory costs vs a current contract note — every candidate is
+   judged net-of-friction with an explicit turnover budget.
+6. Hash-freeze specs BEFORE outcome contact; develop pre-cutoff only; spend
+   each family's single sealed test only when earned. Most families die —
+   that is the protocol working.
+
+Phase 3 — survivor to fund:
+7. Sealed-test survivor → operational-door paper/forward trading → small
+   live capital on the same A/B measurement stack.
+8. Capacity analysis at ₹100 Cr (must survive its own footprint) → PMS
+   registration + auditable track record → AIF Cat III. The governance
+   trail is a due-diligence asset — keep it pristine.
+
+Bottleneck lesson: gross alpha was never the constraint; friction was.
+New families must be low-turnover by design.
 
 ## ENVIRONMENT
 
