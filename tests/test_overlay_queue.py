@@ -204,3 +204,113 @@ def test_real_overlay_log_has_zero_data_rows():
     lines = (REPO / "governance" / "overlay_log.csv").read_text().splitlines()
     assert lines[0] == "ts_local,rec_key,decision,executed_size,reason"
     assert [ln for ln in lines[1:] if ln.strip()] == []
+
+
+# --- ingest health -----------------------------------------------------------
+
+class TestLastExpectedSnapshotDay:
+    """Weekend-aware: a Monday must not demand a Sunday snapshot."""
+
+    def test_weekday_is_itself(self):
+        # 2026-07-20 is a Monday
+        d = pd.Timestamp("2026-07-20")
+        assert oq.last_expected_snapshot_day(d) == d
+
+    def test_saturday_rolls_back_to_friday(self):
+        assert oq.last_expected_snapshot_day(
+            pd.Timestamp("2026-07-18")
+        ) == pd.Timestamp("2026-07-17")
+
+    def test_sunday_rolls_back_to_friday(self):
+        assert oq.last_expected_snapshot_day(
+            pd.Timestamp("2026-07-19")
+        ) == pd.Timestamp("2026-07-17")
+
+    def test_monday_does_not_demand_a_weekend_snapshot(self):
+        """The regression that would make this warn every Monday."""
+        monday = pd.Timestamp("2026-07-20")
+        assert oq.last_expected_snapshot_day(monday).weekday() < 5
+
+
+class TestNewestPopulatedSnapshot:
+    """Empty dated dirs were the actual TCC symptom — they must not count."""
+
+    def test_empty_directories_are_not_populated(self, tmp_path, monkeypatch):
+        root = tmp_path / "raw"
+        (root / "2026-07-17").mkdir(parents=True)
+        (root / "2026-07-17" / "rec.csv").write_text("x")
+        for empty in ("2026-07-18", "2026-07-19", "2026-07-20"):
+            (root / empty).mkdir()
+        monkeypatch.setattr(oq, "RAW_ROOT", root)
+        assert oq.newest_populated_snapshot() == pd.Timestamp("2026-07-17")
+
+    def test_no_directories_returns_nat(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(oq, "RAW_ROOT", tmp_path / "missing")
+        assert oq.newest_populated_snapshot() is pd.NaT
+
+    def test_non_date_directory_names_are_ignored(self, tmp_path, monkeypatch):
+        root = tmp_path / "raw"
+        (root / "scratch").mkdir(parents=True)
+        (root / "scratch" / "f").write_text("x")
+        (root / "2026-07-17").mkdir()
+        (root / "2026-07-17" / "rec.csv").write_text("x")
+        monkeypatch.setattr(oq, "RAW_ROOT", root)
+        assert oq.newest_populated_snapshot() == pd.Timestamp("2026-07-17")
+
+
+class TestIngestHealth:
+    def test_nonzero_exit_is_reported(self, tmp_path, monkeypatch):
+        """Exit 23 is the real failure this was written for."""
+        root = tmp_path / "raw"
+        (root / "2026-07-20").mkdir(parents=True)
+        (root / "2026-07-20" / "rec.csv").write_text("x")
+        monkeypatch.setattr(oq, "RAW_ROOT", root)
+        monkeypatch.setattr(oq, "_launchd_exit_status", lambda *a, **k: 23)
+        warnings = oq.ingest_health(pd.Timestamp("2026-07-20"))
+        assert any("23" in w for w in warnings)
+        assert any("Full Disk Access" in w for w in warnings)
+
+    def test_healthy_state_is_silent(self, tmp_path, monkeypatch):
+        root = tmp_path / "raw"
+        (root / "2026-07-20").mkdir(parents=True)
+        (root / "2026-07-20" / "rec.csv").write_text("x")
+        monkeypatch.setattr(oq, "RAW_ROOT", root)
+        monkeypatch.setattr(oq, "_launchd_exit_status", lambda *a, **k: 0)
+        assert oq.ingest_health(pd.Timestamp("2026-07-20")) == []
+
+    def test_stale_populated_snapshot_warns_even_when_exit_is_zero(
+        self, tmp_path, monkeypatch
+    ):
+        """The exact shape of the outage: dirs exist, exit looks fine, no data."""
+        root = tmp_path / "raw"
+        (root / "2026-07-15").mkdir(parents=True)
+        (root / "2026-07-15" / "rec.csv").write_text("x")
+        (root / "2026-07-20").mkdir()  # created but empty
+        monkeypatch.setattr(oq, "RAW_ROOT", root)
+        monkeypatch.setattr(oq, "_launchd_exit_status", lambda *a, **k: 0)
+        warnings = oq.ingest_health(pd.Timestamp("2026-07-20"))
+        assert any("2026-07-15" in w for w in warnings)
+
+    def test_weekend_run_does_not_warn(self, tmp_path, monkeypatch):
+        """Friday data, checked on Sunday, is healthy — not 2 days stale."""
+        root = tmp_path / "raw"
+        (root / "2026-07-17").mkdir(parents=True)
+        (root / "2026-07-17" / "rec.csv").write_text("x")
+        monkeypatch.setattr(oq, "RAW_ROOT", root)
+        monkeypatch.setattr(oq, "_launchd_exit_status", lambda *a, **k: 0)
+        assert oq.ingest_health(pd.Timestamp("2026-07-19")) == []
+
+    def test_unloaded_job_is_reported(self, tmp_path, monkeypatch):
+        root = tmp_path / "raw"
+        (root / "2026-07-20").mkdir(parents=True)
+        (root / "2026-07-20" / "rec.csv").write_text("x")
+        monkeypatch.setattr(oq, "RAW_ROOT", root)
+        monkeypatch.setattr(oq, "_launchd_exit_status", lambda *a, **k: None)
+        assert any("not loaded" in w for w in oq.ingest_health(pd.Timestamp("2026-07-20")))
+
+    def test_launchctl_failure_never_raises(self, monkeypatch):
+        """A broken diagnostic must not break the tool it reports on."""
+        def boom(*a, **k):
+            raise OSError("launchctl missing")
+        monkeypatch.setattr("subprocess.run", boom)
+        assert oq._launchd_exit_status() is None

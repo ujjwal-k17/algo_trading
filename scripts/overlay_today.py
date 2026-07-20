@@ -99,6 +99,10 @@ def main(argv: list[str] | None = None) -> int:
     print("=" * 72)
     print(f"  OVERLAY DECISION QUEUE — {scope}")
     print("=" * 72)
+    # Ingest health first: if the snapshot is dead, an empty queue below is a
+    # pipeline failure, not a quiet day, and the two look identical.
+    for warning in oq.ingest_health():
+        print(f"  !! INGEST: {warning}")
     if args.date is None and not args.all and latest is not pd.NaT:
         stale = (pd.Timestamp.today().normalize() - latest).days
         if stale > 0:

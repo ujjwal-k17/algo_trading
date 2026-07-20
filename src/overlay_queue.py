@@ -267,3 +267,114 @@ def command_lines(unlogged: pd.DataFrame) -> list[str]:
     return [
         f"overlay '{k}' EXECUTE 1 <reason>" for k in unlogged["rec_key"].astype(str)
     ]
+
+
+# --- Ingest health -----------------------------------------------------------
+#
+# Added 2026-07-20 after com.alpha.ingest failed silently for three days
+# (launchd exit 23; macOS TCC denying /bin/sh access to ~/Desktop). Nothing read
+# ingest.log, so the only symptom was empty dated directories — which look
+# exactly like "no recs today". That outage cost nothing only because two of the
+# three days were a weekend.
+#
+# The pre-existing warning in overlay_today infers ingest health from REC
+# staleness. That is a proxy: it cannot distinguish a dead ingest from a
+# legitimately quiet day, and it only fires once a rec is already missing. These
+# checks read the job's own exit status and the snapshot tree directly, so a
+# failure surfaces on the day it happens.
+#
+# Outcome-blind: reads directory names, mtimes and an exit code. No rec contents,
+# no prices, no settled results.
+
+INGEST_LABEL = "com.alpha.ingest"
+INGEST_LOG = REPO / "data" / "sealed" / "ingest.log"
+
+
+def last_expected_snapshot_day(today: pd.Timestamp | None = None) -> pd.Timestamp:
+    """Most recent weekday on or before ``today``.
+
+    Weekday, not trading day: the NSE holiday calendar is not available to this
+    module, so a market holiday produces one benign false warning rather than a
+    silent miss. Erring toward a spurious warning is the correct direction here —
+    the failure mode being guarded against is silence.
+    """
+    day = (today or pd.Timestamp.today()).normalize()
+    while day.weekday() >= 5:  # 5 = Sat, 6 = Sun
+        day -= pd.Timedelta(days=1)
+    return day
+
+
+def newest_populated_snapshot() -> pd.Timestamp:
+    """Date of the newest NON-EMPTY snapshot directory, or NaT if none.
+
+    Emptiness is the point: the TCC failure created correctly-named directories
+    with nothing in them, so existence alone proves nothing.
+    """
+    if not RAW_ROOT.is_dir():
+        return pd.NaT
+    dates = []
+    for d in RAW_ROOT.iterdir():
+        if not d.is_dir() or not any(d.iterdir()):
+            continue
+        try:
+            dates.append(pd.Timestamp(d.name))
+        except ValueError:
+            continue
+    return max(dates) if dates else pd.NaT
+
+
+def _launchd_exit_status(label: str = INGEST_LABEL) -> int | None:
+    """Last exit status of a launchd job, or None if unavailable.
+
+    Never raises: this is a diagnostic, and a diagnostic that can break the tool
+    it reports on is worse than no diagnostic.
+    """
+    import subprocess
+
+    try:
+        out = subprocess.run(
+            ["launchctl", "list"], capture_output=True, text=True, timeout=10
+        ).stdout
+    except (OSError, subprocess.SubprocessError):
+        return None
+    for line in out.splitlines():
+        parts = line.split()
+        if len(parts) == 3 and parts[2] == label:
+            try:
+                return int(parts[1])
+            except ValueError:
+                return None
+    return None
+
+
+def ingest_health(today: pd.Timestamp | None = None) -> list[str]:
+    """Warnings about ingest health. Empty list means healthy."""
+    warnings: list[str] = []
+
+    status = _launchd_exit_status()
+    if status is None:
+        warnings.append(
+            f"{INGEST_LABEL} is not loaded in launchd (or launchctl is "
+            f"unavailable). The nightly snapshot may not be running at all."
+        )
+    elif status != 0:
+        warnings.append(
+            f"{INGEST_LABEL} last exited {status} (non-zero). The nightly "
+            f"snapshot is FAILING. Check {INGEST_LOG.relative_to(REPO)}. "
+            f"Exit 23 = rsync permission denied: grant Full Disk Access to "
+            f"/bin/sh (not rsync — TCC attributes to the process launchd spawned)."
+        )
+
+    newest = newest_populated_snapshot()
+    expected = last_expected_snapshot_day(today)
+    if newest is pd.NaT:
+        warnings.append(f"No non-empty snapshot directory under {RAW_ROOT}.")
+    elif newest < expected:
+        gap = (expected - newest).days
+        warnings.append(
+            f"Newest POPULATED snapshot is {newest:%Y-%m-%d} ({gap} day(s) "
+            f"behind the last weekday, {expected:%Y-%m-%d}). Empty dated "
+            f"directories look identical to a quiet day — check "
+            f"{INGEST_LOG.relative_to(REPO)}. A market holiday is a benign cause."
+        )
+    return warnings
