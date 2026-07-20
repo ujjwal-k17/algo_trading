@@ -200,7 +200,10 @@ protocol.
   then the file carries a DRAFT banner and may be edited freely. After freeze,
   changes require a new versioned spec, never an edit — the SEAL_v2 pattern.
   Currently: `SPEC-52WH-01.md` (**FROZEN 2026-07-19**, sha256 `4b58f285…`,
-  register row `FREEZE-52WH-0001`). Enforced twice over: `.githooks/pre-commit`
+  register row `FREEZE-52WH-0001`); `SPEC-SRA-01.md` (**DRAFT 2026-07-20,
+  NOT binding, no hash, no register row, NO outcome contact authorized** —
+  short-horizon rally anticipation; see CURRENT STATE).
+  Enforced twice over: `.githooks/pre-commit`
   blocks post-freeze edits AND blocks rewriting/deleting a recorded hash (else
   a spec reopens by deleting its hash); `src/spec_guard.py` re-verifies at run
   time, since an uncommitted working-tree edit never meets the hook.
@@ -213,14 +216,32 @@ protocol.
   −1.32R**; ASSUMED_ENTRY 14 recs = +6.50R (tradeability audit: 12/14
   in-zone but volume-trigger unconfirmed, 2/14 gap-away; no demotion).
   Rec universe 18/18 settled. NAV: 15 daily marks, −0.70% since 2026-06-29.
-- **Overlay log EMPTY — most time-sensitive item in the program.** Still 0
-  data rows as of 2026-07-20: **21 of the 60–90 day live window already
-  elapsed** (started 2026-06-29), i.e. a quarter to a third of the observable
-  period gone. AB_PREREG analyses 2–4 have n=0 until decision-time logging
-  starts; reconstruction proved zero vetoes are inferable (production ledgers
-  every rec). Lost days are unrecoverable and the read date (2026-09-27) does
-  not move. Cost to fix: one `overlay '<rec_key>' ...` call per live rec.
-  Nothing in the Tier 2 pipeline outranks this.
+- **Overlay log: ROOT-CAUSED AND UNBLOCKED 2026-07-20, still 0 data rows.**
+  The cause of 21 empty days was not operator neglect — **the `overlay`
+  command did not exist.** `scripts/overlay.sh` was never sourced and
+  `~/.zshrc` did not exist at all; the setup step in `README_overlay.md` was
+  written and never performed, and nothing surfaced that. Fixed: `~/.zshrc`
+  created (guarded source), `overlay` + `overlay_today` verified loading.
+  Tooling built (`src/overlay_queue.py`, `scripts/overlay_today.py`): lists
+  unlogged live recs through the operational door, emits paste-ready command
+  lines, reports the backlog. `overlay.sh` hardened (rec_key shape, size
+  0..1 with >1 rejected as sizing up, verb/size coherence, duplicate guard
+  requiring a `correction:` reason). **Backlog 31/31 unlogged**; the 28
+  historical ones are counted for honesty, NOT offered as a to-do list —
+  entering them now is recollection, and AB_PREREG analyses 2–4 admit
+  DECISION_TIME scope only. Read date 2026-09-27 does not move. **Remaining
+  cost to fix: one `overlay '<rec_key>' ...` call per live rec, daily.
+  Nothing in the Tier 2 pipeline outranks this.**
+- **Nightly ingest was DEAD 2026-07-18 → 07-20 (launchd exit 23), now
+  fixed.** macOS TCC denied `/bin/sh` access to `~/Desktop`; symptom was
+  correctly-named EMPTY dated dirs, indistinguishable from a quiet day.
+  Fix: Full Disk Access granted to **`/bin/sh`** — granting `rsync` alone
+  does NOT work, because TCC attributes to the responsible process (the
+  binary launchd spawned). Cost was zero only because 07-18/07-19 were the
+  weekend and 07-20 was caught before close; on a Tuesday it would have lost
+  unrecoverable Tier 1 data. Guard added: `overlay_queue.ingest_health()`
+  reads the launchd exit code and the newest NON-EMPTY snapshot directly
+  (weekday-aware), surfaced at the top of `overlay_today`.
 - Advancing Tier 2 candidates: SPEC-QFM-01 (fundamental deltas, shadow slot
   1), SPEC-PEAD-01 (earnings drift, slot 2 — its CAR study is its one Tier 2
   trial, only after spec hash-freeze), SPEC-AG-01 (MCX Silver carry, queued
@@ -264,14 +285,53 @@ protocol.
   double-counting), split spot-checks passed. RESIDUAL CAVEAT: 102/1,412
   (7.2%) still unservable, skewed toward delistings — the C1 write-up must
   argue the survivorship hole's direction (details in `plan_52wh.md` A4).
-- Open unknowns (was five, now FOUR): exchange filing-timestamp corpus
-  (serves PEAD + 52WH event-exit); MCX bhavcopy history; **absolute market cap
-  in the PIT store** (the A1 ingest kept `mcap_rank` only and dropped AMFI's
-  avg-mcap column, so spec §7's EW-vs-MW sensitivity is BLOCKED — re-ingest
-  before claiming it; no rank proxy); **`trial_sr_std` is UNMEASURABLE** and
+- Open unknowns (was five, then four, now **THREE** — all three scoped
+  2026-07-20, one closed):
+  - **Exchange filing-timestamp corpus — SCOPED, blocked on a ToU ruling.**
+    Obtainable free and better than the published Indian literature uses.
+    **BSE `api.bseindia.com` is the primary**: `DissemDT` is the PIT-correct
+    "became public at" field (~2016+), `DT_TM` is submission at second
+    precision back to 2001 (verified: `DT_TM − DissemDT` median −5.79s, a
+    machine pipeline, not a scrape clock). NSE is a useful SECOND CLOCK but
+    only HH:MM until 2020-08 — **BSE is strictly better for the dev window**.
+    SEBI is a dead end (no EDGAR equivalent in India). **Neither exchange
+    tags Reg 30** — classification is a hand-mapping job over BSE's 96 / NSE's
+    160 subcategories and belongs IN the spec, pre-registered. PDFs only from
+    ~2019-01 (a soft-404 makes earlier ones look retrievable). ~2–4 days
+    ingest + 1–2 days mapping; join on ISIN. **Do NOT buy the BSE feed —
+    verified: ₹9L/yr is real-time only, no historical-announcements SKU.**
+    **BLOCKER: NSE's ToU explicitly prohibits automated collection** (and
+    contradicts its own robots.txt); BSE's could not be verified. Operator
+    ruling required — see the ToU item below.
+  - **MCX bhavcopy history — SCOPED, one spike outstanding.** Free public
+    bhavcopy exists; term structure reconstructs (one row per contract per
+    day). Domain 403s to scripted clients (Akamai fingerprinting, not geo) so
+    ingest needs Playwright. **Retrievable DEPTH IS UNVERIFIED and gates
+    everything — one browser-driven fetch of a 2015 and a 2010 date settles
+    it.** Contract master spans 2004–2027; 2015 is the defensible floor.
+    **CRITICAL: there is NO settlement-price column** — `Close` is the only
+    mark, and MCXCCL may mark an illiquid far month FROM the spread between
+    active contracts. That is circular for a carry study: you would measure
+    MCXCCL's own carry assumption. Flag `volume==0 AND close==PCP` (stale)
+    separately from `volume==0 AND close!=PCP` (spread-derived, not
+    independent evidence). SILVER (30kg) is the clean spine; **never splice
+    SILVERM across Feb-2012**; SILVER100 quotes per 10g (100×); exclude
+    30 Mar–30 Apr 2020. AG-01's spec must confront the circularity before
+    anything is built.
+  - **`trial_sr_std` is UNMEASURABLE** and
   will stay open by ruling, not by neglect (RULING 7: only 3 distinct legacy
   variants recoverable, 95% CI [0.35, 4.22] — reconstruction CLOSED; SPA gates,
-  DSR reports; the reporting band is an open operator decision). CLOSED
+  DSR reports; the reporting band is an open operator decision).
+  CLOSED 2026-07-20: **absolute market cap in the PIT store** — the raw AMFI
+  xlsx corpus had the columns all along (the loss was at the normalization
+  step, not download), so it was a re-parse. `scripts/parse_amfi.py` →
+  `staging/amfi_avg_mcap.csv`; store now 274,966 rows / 4 fields.
+  `avg_mcap_cr` is the **unweighted mean of available per-exchange legs**
+  (NOT an NSE cap) and a **6-month DAILY AVERAGE**, so an MW book weights by
+  prior-half-year size, not rebalance-date cap — both belong in any MW
+  write-up. `backtest_52wh` MW path still RAISES: unblocking data is free,
+  spending the sensitivity is a trial AND needs a spec decision on
+  semi-annual mcap across a quarterly rebalance. CLOSED
   2026-07-19: statutory cost stack (RULING 5, `governance/DECISIONS.md`;
   constants in `src/costs_in.py`; broker lines rest on an operator
   ASSUMPTION — contract-note reconciliation waived; slippage remains a
@@ -280,6 +340,30 @@ protocol.
   six daily TRI series incl. NIFTY500 TRI from 1995 under
   `data/reference/tri/`; Nifty200 Momentum 30 launched 2020-08-25, its
   pre-launch history is vendor-backfilled — flag in any use).
+- **OPEN OPERATOR DECISION 1 — exchange terms of use (one combined ruling).**
+  NSE explicitly prohibits automated collection; MCX licenses its data
+  commercially; BSE's clauses are unverified. This gates ALL filing-timestamp
+  work, SRA Stage 2, PEAD's CAR study, and the MCX ingest. The governance
+  trail is a due-diligence asset en route to registration where these
+  exchanges are SEBI-regulated counterparties — a written, reasoned position
+  is an asset, an unexamined one is a liability. **`Accord Fintech (ACE
+  Datafeed)` surfaced INDEPENDENTLY in both research passes** as an
+  authorised vendor for BSE announcements AND MCX — one enquiry could
+  dissolve both problems with a licence attached. Belongs in `DECISIONS.md`.
+- **OPEN OPERATOR DECISION 2 — the inherited habitat defect (gates C1
+  attempt 2).** The A1 parser's BSE-symbol fallback fired only on the `-`
+  sentinel, never on an empty cell, so before 2025H2 it effectively never
+  fired: **50,505 rank rows carry a blank symbol despite AMFI supplying a BSE
+  ticker**, and blank-symbol rows are invisible to `snapshot_as_of` (groupby
+  drops NaN). The 201–1000 habitat therefore returns **719 names instead of
+  ~800** — every 52WH result to date ran on a habitat ~10% narrower than the
+  spec says, and those names never reached the price-panel fetch list.
+  `parse_amfi` reproduces the defect EXACTLY (asserted row-for-row) so both
+  staging halves share one symbol space. Fixing it means rebuilding both
+  staging files plus a yfinance refetch and changes every 52WH number to
+  date — **so it lands BEFORE C1 attempt 2, not after.** Also corrected:
+  COVERAGE.md §6.2 claimed 100% top-1000 NSE-symbol coverage; it is
+  88.7%–96.9%, same root cause (empty cell vs `-` sentinel).
 
 ## TRAPS (paid for in real trials — do not re-learn these)
 
@@ -307,13 +391,38 @@ protocol.
    liability at due diligence.
 5. **A withdrawn result is still a spent trial.** C1-52WH-0001 is not
    reclaimable. The register is append-only — corrections are new rows.
+6. **This program's characteristic failure is SILENCE, not error.** Four
+   instances now, each of which looked exactly like "nothing to report":
+   `ranked 0` printed three times in C1-52WH-0001; the `overlay` command that
+   did not exist for 21 days; the ingest that exited 23 for three days into
+   correctly-named EMPTY directories; and 50,505 blank-symbol PIT rows that a
+   `groupby` silently dropped, narrowing the habitat ~10%. External sources
+   share the shape — BSE returns `[]` without an `Origin` header, NSE
+   silently truncates a >2-year window, MCX serves partial session bars with
+   a healthy-looking settle, and a soft-404 returns HTTP 200 with identical
+   bytes for a fabricated filename. **A successful exit code, a parsed file
+   and a non-empty row count prove nothing.** Every pipeline needs an
+   assertion against an EXPECTED VOLUME or COVERAGE, and every long-running
+   job needs something that reads its log. Nothing read `ingest.log` — that
+   is why three days passed.
+7. **Setup steps written in a README are not setup steps performed.**
+   `README_overlay.md` documented sourcing `overlay.sh`; it was never done,
+   and the cost was 21 unrecoverable days of the single most time-sensitive
+   measurement in the program. Prefer a check that FAILS LOUDLY over an
+   instruction that can be silently skipped.
 
 ## ROADMAP (the path to the fund)
 
 Phase 1 — live window (2026-06-29 → read date 2026-09-27):
-1. **Start decision-time overlay logging NOW** — most urgent; AB_PREREG
-   analyses 2–4 have n=0 until it starts and lost days are unrecoverable.
-2. Keep nightly ingest + settlement + NAV running untouched.
+1. **Log a decision for EVERY live rec, EVERY trading day — still the most
+   urgent item in the program.** Blockers are gone (2026-07-20: `overlay`
+   installed, `overlay_today` built, ingest fixed), so this is now purely a
+   daily habit: run `overlay_today`, then one `overlay '<rec_key>' ...` per
+   rec. AB_PREREG analyses 2–4 stay at n=0 until rows exist, and every day
+   not logged is gone for good — the read date does not move.
+2. Keep nightly ingest + settlement + NAV running untouched — **and CHECK
+   that they ran.** `overlay_today` now reports ingest health at the top;
+   a green exit code alone is not evidence (TRAP 6).
 3. Read the four A/B analyses ONCE on 2026-09-27. Prize = validated
    measurement stack + verdict on overlay skill; legacy kill stands.
 
@@ -326,10 +435,21 @@ Phase 2 — Tier 2 pipeline (parallel):
 6. Hash-freeze specs BEFORE outcome contact; develop pre-cutoff only; spend
    each family's single sealed test only when earned. Most families die —
    that is the protocol working. SPA gates every verdict (RULING 7).
-7. **Immediate 52WH decisions queued for the operator:** (a) the DSR reporting
-   band, (b) C1 ATTEMPT 2 authorization — rebuild the panel with the quorum
+7. **Immediate decisions queued for the operator** (as of 2026-07-20):
+   (a) the **DSR reporting band** (RULING 7, proposed 0.35/0.50/0.70);
+   (b) the **habitat defect fix** — gates C1 ATTEMPT 2, since a panel rebuild
+   would otherwise bake in the same ~10% narrow habitat (see CURRENT STATE,
+   OPEN OPERATOR DECISION 2);
+   (c) **C1 ATTEMPT 2 authorization** — rebuild the panel with the quorum
    filter, then a new `C1-52WH-0002` row; expected gain ~2 extra years of
    walk-forward (from ~2016 vs 2018-04) and a clean 2018-2020 crash leg.
+   **Sequence (b) before (c)** or the attempt inherits a known defect;
+   (d) the **combined exchange ToU ruling** (OPEN OPERATOR DECISION 1) —
+   gates all filing work, SRA Stage 2 and PEAD's CAR study;
+   (e) the **MCX depth spike** — half a day, gates AG-01's data plan;
+   (f) whether **SPEC-SRA-01** advances at all: it is FOURTH in the queue
+   (QFM + PEAD hold both shadow slots, AG-01 and 52WH ahead), and its own
+   pre-stated null is that a 5-day family dies on friction.
 
 Phase 3 — survivor to fund:
 8. Sealed-test survivor → operational-door paper/forward trading → small
@@ -351,7 +471,7 @@ another selection engine.
 
 `.venv`: python 3.14, pandas 3.0.3, pytest 9.1.1, pyarrow 25.0.0,
 yfinance 1.5.1 (+ openpyxl, pypdf for A1 corpus parsing). Tests:
-`.venv/bin/python -m pytest tests/ -q` (155 passing as of 2026-07-20).
+`.venv/bin/python -m pytest tests/ -q` (233 passing as of 2026-07-20).
 Data dirs (`data/sealed/`, `data/legacy_snapshot/`, `data/market/`,
 `data/derived/`, `data/reference/`, plus the bulk 52WH panel artifacts
 under `data/workspace/`) are gitignored — never push data. Remote:
