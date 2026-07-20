@@ -555,3 +555,200 @@ had been fixed upstream.
 Corollary: production DOCUMENTATION can be stale in the same way and is not
 evidence of current behaviour — see the `SYSTEM_MASTER_REFERENCE.md` /
 `AUDIT.md` drift recorded above. Prefer reading the code at HEAD.
+
+## 2026-07-20 — Pillar scores now persisted (production, operator-run) + a correction
+
+**DONE (production, operator-executed, read-only from this repo's side):**
+`vision_score` and `composite_score` appended to `top5_report_data*.csv`
+(header 30 -> 32 cols, prior column order byte-identical, new cols last).
+Verified by RUNNING `save_reports()` into a scratch dir against live values —
+8/8 assertions, real data (NAUKRI 84.0/0.754, LLOYDSME 81.0/0.779,
+RADICO 100.0/0.858), stub-vision rows write 50.0 not empty. Committed
+separately from the display-only fix; not pushed; no restart needed (both
+files are re-read per scheduled invocation).
+
+- **CORRECTION to the 2026-07-20 Variant B entry.** That entry states both
+  scores "live in sqlite alone". FACT (traced at HEAD): **`composite_score` is
+  persisted in NO table at all** — computed in-memory by `score.get_top_n` and
+  discarded. It is not a sqlite-to-CSV move; this is the FIRST time that pillar
+  has been written down anywhere. Consequence: every historical `final_score`
+  in the archive is permanently unattributable to its TA component. The gap is
+  closed forward-only.
+- FACT: `top20_*.csv` deliberately NOT modified — (i) dormant (newest
+  2026-07-01, writer `main.py` appears in no launchd plist, not a daily
+  artifact); (ii) `vision_score` genuinely out of scope there — `get_top_n(20)`
+  runs BEFORE the vision step; (iii) it already carries `composite_score` at
+  col 5, so appending would have yielded a duplicate header that `pd.read_csv`
+  mangles to `composite_score.1`. The scope premise in the change request was
+  wrong on all three counts; reporting back beat plumbing.
+- FACT: **no tests exist for the report writer** — no `test_*.py` anywhere in
+  the production repo, nothing in `patches/` referencing `save_reports`. The
+  dry-run harness lives at `scratchpad/dryrun_report_csv.py`, uninstalled.
+  OPEN (operator): whether to keep it as the first regression guard for that
+  writer. Note the asymmetry — THIS repo enforces 233 tests; the production
+  system that trades real capital has none.
+- Also fixed: the `run_phase2.py` "Interim re-rank: TA 80% + Vision 20%"
+  display-only block (separate commit).
+
+**What this unlocks (outcome-blind, no trial, no spec):** once these columns
+accumulate, the rank-perturbation diagnostic — how often the top-5 SET changes
+under a weight delta — becomes runnable under CONTAMINATION_POLICY.md's free
+list. That is the cheap answer to the Variant B question, and it now has a
+clock running rather than being unanswerable.
+
+## 2026-07-20 — VARIANT C scope (outcome-blind): vision-LLM on all 250 to select the top 20
+
+Third operator-proposed variant, scoped OUTCOME-BLIND. **No trial spent, no
+backtest, no return computed, no LLM call made.** All code claims are from clone
+pin ee7ad13 — **RULING 9 applies; verify at production HEAD before acting.**
+
+**Verdict: (d) NOT MEANINGFUL AS PHRASED.** Three independently sufficient
+reasons.
+
+1. **"Confidence in the 20" names nothing measurable.** FACT: `conviction` is an
+   LLM free-text output field (`synthesis.py:72`), not a computed quantity, and
+   is produced ONLY by `run_synthesis(top20, ...)` (`run_phase2.py:886`) — i.e.
+   on the top-20, AFTER selection. Names 21-250 have none, and running vision on
+   250 would not create one (vision and synthesis are separate steps, separate
+   models, separate outputs). FACT: the quantity that selects the 20 is
+   `composite_score` (`score.py:169-181`), a weighted sum of five PERCENTILE
+   RANKS — an ordering statistic with no confidence semantics: the #1 name
+   scores ~1.0 whether the day's opportunity set is excellent or uniformly
+   terrible. Restated as an outcome claim it becomes a TRIAL; restated as
+   set-overlap it becomes FREE (see below).
+2. **Structurally there is almost nothing new to add.** FACT: decomposing
+   `compute_vision_score` (`vision.py:141-176`) — `stage` 5-65 pts,
+   `trend`+strength 0-12, `breakout`x`volume_confirmation` 0-15, `ma_structure`
+   5, `pattern_confidence` 3. Every term except `pattern_confidence` is
+   derivable from the seven metrics `vision.py:79-85` hands the model, and all
+   seven already sit inside `composite_score`. Worse, the prompt HARDCODES two
+   of them: rule 1 (`:43-46`) forces the stage classification from SMA50/ROC-21
+   arithmetic; rule 3 (`:51-54`) makes `volume_confirmation` a literal 1.2x
+   threshold on a supplied number. **97 of 100 points carry no information not
+   already in the screen being replaced.** `key_support`/`key_resistance` are
+   genuinely pixel-derived but contribute ZERO to `vision_score` (never read by
+   `compute_vision_score`) — they are a data-quality flag via
+   `check_sr_vs_features`. At 20->5 vision sits alongside fundamentals,
+   catalyst, quality, reversal_rs; at 250->20 there is nothing else in the mix.
+3. **Untestable on dev data.** All four Variant B disqualifiers hold; #2
+   (renderer leak) and #4 (step-function non-determinism) get WORSE at 250 —
+   #4 especially: today a 25-point stage jitter perturbs a 0.10 weight inside a
+   six-factor blend; under the proposal it would perturb WHICH NAMES REACH THE
+   20, promoting jitter from a nudge to a gate. NEW disqualifier #5: `charts/`
+   holds 306 files, ALL dated >= 2026-06-18 — every chart in existence is inside
+   the Tier 1 window. A dev-window study needs ~575k as-of renders from a
+   renderer with no as-of mode (vs ~46k for Variant B). Blocked ~12.5x harder.
+
+**Cost if run forward anyway (FACT on volume, ASSUMPTION on the 12s/call
+constant):** 24 -> 254 API calls/evening (the 4-stock sample pass is NOT
+deduplicated — `syms[:4]` are analysed twice); ~20 -> 250 chart renders (charts
+are rendered lazily INSIDE vision, `vision.py:284-289`; `main.py step5_charts`
+is never called on the scheduled path); vision step ~5min -> ~51min (range
+34-76); evening run ends ~17:38-18:20, ~3h inside the 21:30 window — **latency
+is NOT the blocker**; ~10x LLM spend (rupee figure UNKNOWN, pricing not
+verified). The loop is strictly serial (`vision.py:406-419`), `delay_sec=1.5`,
+with zero hits for retry/backoff/concurrency.
+
+**LIVE DEFECT FOUND (independent of this variant, actionable now).**
+`vision.py:361-363` catches `anthropic.APIError` and returns
+`_chart_unavailable_result(symbol)` -> **`vision_score = 50.0`** — a neutral
+score stored as if it were a real reading, with no raised exception, no counter,
+and no print on that path (the `[CHART_UNAVAILABLE]` print at `:297` is only on
+the no-chart path). ASSUMPTION (SDK-version dependent, one line to check):
+`RateLimitError` subclasses `APIStatusError` subclasses `APIError` — if so, a
+429 today is silently swallowed into a neutral 50. `synthesis.py:397-407`
+ALREADY does this correctly (RateLimitError -> 30s wait -> one retry); vision
+simply lacks it. This is TRAP 6 in its exact historical shape and is live at 24
+calls/evening TODAY. **Fix regardless of whether the 250 idea proceeds.**
+
+**Also flagged:** doc/code mismatch at `final_score.py:549-557` — the comment
+justifying the 68 tier-1 bar cites "fund>=68 picks: +0.117R vs +0.064R"
+(2026-06-28 backtest) while the code reads `conviction_raw`/`conviction`. Not
+material to this scope; worth an operator glance.
+
+**The FREE question, which may end the matter without any of the above:**
+set-overlap / churn — how much does the top-20 SET actually change when vision
+is added as a 250-stage input (Jaccard overlap + rank displacement)? Outcome-
+blind, explicitly free under CONTAMINATION_POLICY.md, no trial, no spec. If
+overlap is ~95%, the hypothesis is answered at zero cost. **Prerequisite:**
+persist per-symbol `composite_score` + the five sub-scores (`score_trend`,
+`score_momentum`, `score_rs`, `score_volume`, `score_breakout`) for ALL ~250
+names into the sealed snapshot — extending the top-5 persistence completed
+2026-07-20 to the full universe.
+
+**Forward route (c), if ever wanted:** disqualifiers 1 and 2 dissolve
+forward (a same-day chart has no outcome to memorise and needs no as-of mode);
+**3 and 4 survive** — pin a DATED model snapshot before capture begins, and
+pre-commit the jitter mitigation. **The hard constraint: the counterfactual arm
+does not exist and cannot be backfilled** — comparing the two rankings needs
+BOTH on the same evening, and a chart rendered later is a different chart. That
+is a capture-design decision that must be made BEFORE capture starts. Any
+vision-informed arm must stay SHADOW-ONLY for the whole window; the moment it
+touches live selection there is no counterfactual left to measure. Realised-
+outcome comparison IS a trial and needs a hash-frozen spec + register row in the
+same commit, pre-registering metric, arms, horizon, SPA gate (RULING 7), and the
+model-snapshot pin.
+
+## 2026-07-20 — VERIFIED AT PRODUCTION HEAD: vision fabricates readings on API failure
+
+Operator-run read-only verification of the VARIANT C finding. **CONFIRMED, and
+broader than scoped.** RULING 9 discharged for this claim.
+
+- FACT (`vision.py:361-363`): `except anthropic.APIError as e: print(f"API-ERR:
+  {e}"); return _chart_unavailable_result(symbol)` -> `vision_score = 50.0`.
+- FACT (`anthropic` 0.111.0, MRO printed): `RateLimitError` -> `APIStatusError`
+  -> `APIError`. So the handler catches **far more than 429**:
+  `APIConnectionError`, `APITimeoutError`, `InternalServerError` (500),
+  `OverloadedError` (529), `AuthenticationError`, `BadRequestError`, and
+  out-of-credit. **Every one becomes a fabricated neutral 50.**
+- FACT: **it fired 105 times.** `grep -rc "API-ERR" logs/` = 105, all
+  `Error code: 400 — "Your credit balance is too low to access the Anthropic
+  API"`, on **2026-07-06 ~16:48 IST** — two consecutive batches (4 stocks then
+  17), 100% failure, every stock fabricating a 50. Not a 429 in this instance,
+  but it routes through the identical handler: mechanism confirmed end to end.
+- FACT — **no live recommendation was scored on a swallowed error.** The
+  picks_log join returns zero rows across all affected dates. Nearest miss:
+  DIXON carried a stub 50 on 07-15 and was picked rank 3 on 07-16, but its
+  07-16 row is a genuine 100.0. **NOTE: 2026-07-06 is day 8 of the live window
+  (started 2026-06-29), i.e. Tier 1 A/B data. The A/B is intact — but only just,
+  and only by luck of which names were affected.**
+- Two CORRECTIONS to the clone-derived scope: (i) there IS a print
+  (`API-ERR: {e}` at `:362`) — stdout is not literally silent; (ii)
+  `[CHART_UNAVAILABLE]` is NOT no-chart-only — the instance at `vision.py:417`
+  keys off `if r.get("stage")` and the stub sets `stage=None`, so it fires on
+  both paths. Nothing PERSISTS or AGGREGATES either signal, which is the actual
+  defect.
+
+**Three aggravations beyond the original claim:**
+1. **The DB erases the evidence.** A unique index on `(symbol, date)` plus
+   `INSERT OR REPLACE` means a later successful run overwrites the stub. Only
+   **7** stub-50s survive DB-wide against 105 known occurrences. **The residue
+   is not the incidence** — any audit from the DB systematically under-counts.
+2. **The two stub paths are byte-identical in storage.** No-chart and API-error
+   return the same dict, so even those 7 survivors cannot be attributed to a
+   cause. The question is unanswerable as built.
+3. **Both `system_check` canaries FILTER stubs out rather than counting them**
+   (`:96-98` reports "chart-unavailable stubs only" as info; `:129` filters
+   `stage IS NOT NULL`). **The health check actively looks away** — it is
+   designed to suppress the signal it exists to catch, and therefore reports
+   green through a 100%-failure batch.
+
+**The bug in one sentence: `synthesis.py:400-426` returns ABSENCE (typed
+`RateLimitError` -> log -> sleep(30) -> one retry -> `None` on failure); vision
+returns a FABRICATED READING.** Absence is recoverable; a fabricated 50 is
+indistinguishable from data.
+
+**Authorized fix (operator-confirmed):** mirror synthesis's typed-exception
+retry exactly; add a per-run failure counter split by cause; AND make the two
+stub paths distinguishable in storage — without the last, the counter dies at
+end-of-run and the DB stays unattributable, reproducing aggravation 1.
+Successful readings must be byte-identical to today.
+
+**New general lesson (candidate TRAP 8): THE RESIDUE IS NOT THE INCIDENCE.**
+Where a store overwrites in place (`INSERT OR REPLACE`, last-write-wins,
+idempotent upserts), the surviving rows are a biased sample of what happened —
+biased precisely AGAINST transient failures, because those are the ones a later
+successful run replaces. Count events at the time they occur; never infer
+incidence from a mutable store's residue. Compounding: a health check that
+FILTERS anomalies to reduce noise converts this from under-counting into
+reporting green.
