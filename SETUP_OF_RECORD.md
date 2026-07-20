@@ -68,10 +68,23 @@ fill-basis preference, RECONSTRUCTED-scope inference + never-merge guard.)
 
 1. **Overlay log still empty** — analyses 2–4 of AB_PREREG have n = 0 until
    decision-time logging starts. Most time-sensitive item in the program.
-2. **Data-sprint unknowns** (per slate register): NIFTY100 PIT constituent
-   depth; exchange filing-timestamp corpus; MCX bhavcopy bulk history;
-   statutory cost verification vs current contract note; TRI download depth.
-3. **Fill-basis starved**: no exit fills in trades_log yet; activates
+   As of 2026-07-20: 21 days of the 60–90 day live window elapsed, 0 rows.
+   Lost days are unrecoverable; the read date (2026-09-27) does not move.
+2. **Data-sprint unknowns** — three of the original five CLOSED 2026-07-19:
+   PIT constituent depth (A1), statutory cost stack (RULING 5), TRI depth (A3).
+   Still open: exchange filing-timestamp corpus (serves SPEC-PEAD-01 and the
+   52WH event-exit rule); MCX bhavcopy bulk history (SPEC-AG-01).
+3. **Absolute market cap missing from the PIT store** (new 2026-07-20): the A1
+   ingest kept `mcap_rank` and dropped AMFI's average-mcap column, so
+   SPEC-52WH-01 §7's EW-vs-MW sensitivity cannot be claimed. `backtest_52wh`
+   raises rather than substituting a rank-derived proxy. Re-ingest to close.
+4. **`trial_sr_std` unmeasurable** (new 2026-07-20, RULING 7): open by ruling,
+   not by neglect — reconstruction from legacy artifacts yielded only 3 distinct
+   variants with a 95% CI of [0.35, 4.22]. That route is CLOSED. Hansen SPA
+   gates (it does not depend on the parameter); DSR is reported alongside.
+   PENDING OPERATOR DECISION: the pre-registered DSR reporting band
+   (proposed 0.35 / 0.50 / 0.70).
+5. **Fill-basis starved**: no exit fills in trades_log yet; activates
    automatically.
 
 (T1 semantics resolved 2026-07-18: FULL exit at T1, CONFIRMED-BY-OPERATOR —

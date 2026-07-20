@@ -123,7 +123,8 @@ protocol.
     rename effective date (prevents dual-label double-counting in the
     cross-section).
 - **SPEC-52WH-01 Stage 4–5 stack** (built 2026-07-19 — Stage 5 is the FIRST
-  outcome-touching code in the repo, and it has not been run):
+  outcome-touching code in the repo; run once as C1-52WH-0001 on 2026-07-19,
+  result WITHDRAWN, see CURRENT STATE):
   - `src/spec_guard.py` — run-time freeze gate: `verify_frozen` (live sha256 ==
     recorded) + `require_trial_row` (trial pre-registered) → `preflight`.
   - `src/backtest_52wh.py` — THE contamination boundary; the only module that
@@ -218,11 +219,19 @@ protocol.
   ahead of 52WH. Outcome contact is now unlocked for **dev data < 2024-07-17
   only**, via `scripts/run_trial_52wh.py` and nowhere else.
   **Phase A (data groundwork) CLOSED 2026-07-19 — A1–A4 all done** and
-  Stage 1–3 modules built + tested (see THE MACHINERY). **Phase B CLOSED + Stages 4-5 BUILT
-  2026-07-19. Next 52WH step: C1, which needs an operator-authorized
-  `C1-52WH-0001` register row — the harness is ready and refuses to run
-  without it.** NO OUTCOME CONTACT HAS OCCURRED: every Stage 5 test runs on
-  synthetic panels. Key facts:
+  Stage 1–3 modules built + tested (see THE MACHINERY). **Phase B CLOSED, Stages 4-5 BUILT,
+  C1 ATTEMPT 1 RUN AND WITHDRAWN (2026-07-19/20).** `C1-52WH-0001` was
+  pre-registered and executed; its result (screened net IR +0.349, increment
+  +0.168, SPA p 0.034, SURVIVES) is **WITHDRAWN AND UNCITABLE** — 33 yfinance
+  holiday-placeholder dates (132 rows of 2.48M) NaN-blocked `rolling_max`'s
+  `min_periods=252`, pushing first defined nearness to 2018-10-26 instead of
+  2016-01-08, so the walk-forward started 2018-04 and its first three
+  rebalances screened NOTHING (both arms identical for ~6 months, including
+  the opening leg of the 2018-2020 drawdown the spec requires). Register row
+  `C1-52WH-0001-DEFECT`; the trial is spent, not reclaimed. Fixed:
+  `drop_non_trading_dates` quorum filter + a signal-starvation hard stop in
+  `backtest_52wh`. **Next 52WH step: C1 ATTEMPT 2 — rebuild the panel, then a
+  NEW `C1-52WH-0002` row (NOT yet authorized).** Key facts:
   PIT habitat reconstructable from announce-safe **2018-01-25** (AMFI lists
   18/18 periods 2017H2→2026H1, zero gaps; announce = period_end + 25d
   ASSUMED, flagged per row; F&O fallback never triggers pre-cutoff);
@@ -232,8 +241,14 @@ protocol.
   double-counting), split spot-checks passed. RESIDUAL CAVEAT: 102/1,412
   (7.2%) still unservable, skewed toward delistings — the C1 write-up must
   argue the survivorship hole's direction (details in `plan_52wh.md` A4).
-- Open unknowns (was five, now two): exchange filing-timestamp corpus
-  (serves PEAD + 52WH event-exit) and MCX bhavcopy history. CLOSED
+- Open unknowns (was five, now FOUR): exchange filing-timestamp corpus
+  (serves PEAD + 52WH event-exit); MCX bhavcopy history; **absolute market cap
+  in the PIT store** (the A1 ingest kept `mcap_rank` only and dropped AMFI's
+  avg-mcap column, so spec §7's EW-vs-MW sensitivity is BLOCKED — re-ingest
+  before claiming it; no rank proxy); **`trial_sr_std` is UNMEASURABLE** and
+  will stay open by ruling, not by neglect (RULING 7: only 3 distinct legacy
+  variants recoverable, 95% CI [0.35, 4.22] — reconstruction CLOSED; SPA gates,
+  DSR reports; the reporting band is an open operator decision). CLOSED
   2026-07-19: statutory cost stack (RULING 5, `governance/DECISIONS.md`;
   constants in `src/costs_in.py`; broker lines rest on an operator
   ASSUMPTION — contract-note reconciliation waived; slippage remains a
@@ -274,7 +289,7 @@ New families must be low-turnover by design.
 
 `.venv`: python 3.14, pandas 3.0.3, pytest 9.1.1, pyarrow 25.0.0,
 yfinance 1.5.1 (+ openpyxl, pypdf for A1 corpus parsing). Tests:
-`.venv/bin/python -m pytest tests/ -q` (107 passing).
+`.venv/bin/python -m pytest tests/ -q` (155 passing as of 2026-07-20).
 Data dirs (`data/sealed/`, `data/legacy_snapshot/`, `data/market/`,
 `data/derived/`, `data/reference/`, plus the bulk 52WH panel artifacts
 under `data/workspace/`) are gitignored — never push data. Remote:

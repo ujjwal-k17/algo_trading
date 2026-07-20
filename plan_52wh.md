@@ -126,7 +126,7 @@ Order matters: A1/A2/A3 are the blocking unknowns; A4 is build work that can sta
       Built alongside the rest of Stage 1–2 on synthetic frames:
       `src/pit_universe.py` (+ `scripts/build_pit_universe.py` ingester),
       `src/signal_52wh.py`, `scripts/build_price_panel.py` — all with
-      no-look-ahead acceptance tests (suite 42 → 88 passing).
+      no-look-ahead acceptance tests (suite 42 → 88 passing; 155 as of 2026-07-20).
 - [x] **B2. Spec text DRAFTED 2026-07-19** → `governance/specs/SPEC-52WH-01.md`
       (status DRAFT — binding only at B3; editable until the hash is recorded).
       Contains, verbatim as
@@ -173,13 +173,33 @@ Order matters: A1/A2/A3 are the blocking unknowns; A4 is build work that can sta
 
 ## Phase C — Pre-cutoff development (registered trials, post-freeze only)
 
-- [ ] **C1. Primary walk-forward — HARNESS READY, AWAITING AUTHORIZATION.**
-      Everything is built; the run itself is the trial. To execute: append a
-      `C1-52WH-0001` register row (data_tier `dev`) stating the pre-registered
-      parameters, commit it, then
-      `.venv/bin/python scripts/run_trial_52wh.py --trial-id C1-52WH-0001`.
-      The gate refuses until that row exists — deliberately, so the trial count
-      cannot be incremented by accident. Spec below unchanged:
+- [x] **C1 ATTEMPT 1 (`C1-52WH-0001`) — RAN 2026-07-19, RESULT WITHDRAWN.**
+      Pre-registered, executed, then withdrawn in post-run audit. It reported
+      screened net IR +0.349 vs unscreened +0.181, increment +0.168, SPA
+      p 0.034, turnover 76.2%/yr, verdict SURVIVES — **none of which may be
+      cited.** DEFECT: 33 dates carried yfinance holiday placeholders (flat
+      OHLC, volume 0) for 4 symbols; 132 rows of 2.48M. The wide pivot turns
+      each into a NaN row for every OTHER symbol, and `expr._rolling_max` uses
+      `min_periods=252`, so one NaN blocks nearness across the trailing window.
+      Last bad date 2017-10-20 pushed first defined nearness to 2018-10-26
+      instead of 2016-01-08 — the walk-forward began 2018-04 not ~2016, and its
+      first three rebalances ran `ranked=0`, i.e. NO screening: both arms were
+      the identical book for ~6 months, including the opening leg of the
+      2018–2020 drawdown this spec requires be spanned. Register row
+      `C1-52WH-0001-DEFECT`. The trial is NOT reclaimed — it is spent.
+      Fixed: `build_price_panel.drop_non_trading_dates` quorum filter;
+      `backtest_52wh` raises on signal starvation (`min_ranked_frac`, default
+      0.5); regression tests for both.
+      SEPARATE finding (RULING 7): even at face value that active Sharpe of
+      0.349 sits below SR0 across the entire plausible dispersion range
+      (0.80–1.54), so the run was weak independently of the defect.
+- [ ] **C1 ATTEMPT 2 — NOT AUTHORIZED.** Requires rebuilding the panel with the
+      quorum filter, then a NEW pre-registered row (`C1-52WH-0002`). Expected
+      gain: walk-forward from ~2016 rather than 2018-04 — roughly two extra
+      years and a clean 2018–2020 crash leg. Per RULING 7 the marginal trial
+      cost is small (0.32% on the bar); the scarce resources are the two shadow
+      slots and the single sealed test, neither of which this touches.
+      Spec below unchanged:
       Primary walk-forward on dev data < 2024-07-17, spanning ≥ one full
       bull-bear cycle (2018–2020 crash and 2022 drawdown included), net of the A2
       cost stack at spec'd turnover, deflated Sharpe / SPA against the register's
@@ -283,7 +303,7 @@ column is a prerequisite for claiming that sensitivity.
 3. Stage 4 freeze happens only when Stage 1–3 exist and the spec text is final.
 4. Stage 5 runs after freeze; C2 conditioning trials each reuse the same runner
    with one added expression, one register row each.
-5. Tests extend the existing suite (`tests/`, currently 42 passing); every new
+5. Tests extend the existing suite (`tests/`, 155 passing as of 2026-07-20); every new
    module ships with its no-look-ahead test.
 
 ## Explicit non-goals (evidence-based, do not resurrect)

@@ -293,3 +293,58 @@ gate — not the price zone — is what rejected the profitable counterfactuals.
 - ASSUMPTION flagged for the operator: if the intended reading of the cap was
   ever "no family may even freeze until a slot frees", say so — the freeze
   would then need a v2 spec to unwind, since a frozen spec cannot be edited.
+
+## 2026-07-20 — RULING 7: trial_sr_std is NOT reconstructable; SPA gates, DSR reports
+
+Context: the Deflated Sharpe Ratio deflates an observed Sharpe against SR0, the
+Sharpe the best of N trials reaches by luck. SR0 = trial_sr_std x m(N), where
+m(52) = 2.2913. SR0 scales LINEARLY with trial_sr_std but only logarithmically
+with N — one more trial moves the bar 0.32%, doubling the trial count moves it
+11%, doubling the dispersion moves it 100%. The dispersion is therefore the
+dominant input, and C1-52WH-0001 used trial_sr_std = 0.5 as an operator-facing
+ASSUMPTION with no measured basis.
+
+- ATTEMPTED (2026-07-20): reconstruct the dispersion from legacy artifacts.
+  Sources read (read-only, frozen clone ~/vendor/legacy-engine): build_tracker.md
+  Runs 1-10 reported Sharpes, and output/backtest_run7/run8_*_equity.csv daily
+  equity curves. Curves gated through data_gate.load (research door) to the
+  pre-cutoff window 2023-07-04 -> 2024-07-16, 254 sessions, active Sharpe
+  computed vs NIFTY 500 TRI.
+- FACT: only THREE distinct variants exist. backtest_run7_equity.csv is
+  byte-identical to run8_S1 (abs Sharpe 3.344513 both) — a duplicate, not a
+  data point. Measured active Sharpes: S1 1.414, S2 2.230, S3 0.897.
+- FACT: point estimate std(ddof=1) = 0.672; chi-square 95% CI on that standard
+  deviation at df=2 is **[0.35, 4.22]**. At the upper end SR0 would be 9.68,
+  which is absurd on its face. The estimate is uninformative.
+- FACT (structural, independent of sample size): S1/S2/S3 are three tweaks of
+  ONE system (live config; + entry filters; + expectancy geometry). DSR's null
+  concerns dispersion across the BREADTH of the search. Variants of one family
+  scatter far less than 51 genuinely different ideas, so this measurement
+  answers the wrong question and answers it too low.
+- FACT: only written-up runs carry Sharpes; abandoned explorations left none.
+  The recorded sample is selected on completeness, truncating the left tail.
+- FACT: the gated window is one year of a violent mid-cap bull (absolute
+  Sharpes 2.9-4.2) — regime-inflated, not a stable estimate.
+- RULING: trial_sr_std is NOT measurable from this program's artifacts. The
+  reconstruction route is CLOSED; do not repeat this archaeology.
+- RULING: **SPA is the gate; DSR is reported, not gating.** Hansen SPA
+  bootstraps the actual return series and does not depend on trial_sr_std at
+  all, so it is robust to exactly the uncertainty above. SPEC-52WH-01 §8 already
+  gates on SPA p and net IR — that was correct as frozen, and the DSR floor
+  floated on 2026-07-19 is WITHDRAWN: hard-coding an unmeasurable constant into
+  a binding kill line would have been a mistake. No SPEC-52WH-02 is needed.
+- ROBUST FINDING that survives the parameter uncertainty: across the whole
+  informative range (0.35 -> 0.67), SR0 lands between 0.80 and 1.54.
+  C1-52WH-0001's screened active Sharpe of 0.349 sits below ALL of them. The
+  qualitative warning about that result holds even though its precise DSR
+  (0.025) does not.
+- Note on discipline: the adopted dispersion was pre-committed BEFORE computing
+  it, precisely because calibrating it after seeing whether it helps a family is
+  the contamination this policy exists to prevent. The measured point estimate
+  (0.672) came out HIGHER than the 0.5 assumed, i.e. the evidence cut AGAINST
+  the family under test.
+- OPEN (operator decision, not yet taken): the pre-registered DSR REPORTING
+  band. Proposed 0.35 / 0.50 / 0.70 — the informative part of the CI with the
+  original assumption as midpoint — reported in every trial write-up while SPA
+  gates. Until the operator sets it, trials report DSR at 0.5 and cite this
+  ruling for the caveat.
