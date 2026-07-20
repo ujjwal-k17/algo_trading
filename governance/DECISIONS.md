@@ -752,3 +752,99 @@ successful run replaces. Count events at the time they occur; never infer
 incidence from a mutable store's residue. Compounding: a health check that
 FILTERS anomalies to reduce noise converts this from under-counting into
 reporting green.
+
+## 2026-07-20 — VARIANT D scope (outcome-blind): options-implied signals for breakout detection
+
+Fourth operator hypothesis scoped OUTCOME-BLIND, and the first that is a NEW
+signal family rather than a legacy variant. **No trial spent, no backtest, no
+return computed, no exchange endpoint touched, no data fetched.**
+
+**Verdict: (d) NOT WORTH PURSUING as a standalone family. Disclosed dead end
+(TRAP 4).** Note the reasons are INDEPENDENT OF DATA ACCESS — obtaining the data
+would not rescue it, which is why this is (d) and not (c).
+
+1. **The premise as phrased is a tautology.** `dC = D*dS + (1/2)G*(dS)^2 +
+   vega*dIV + theta*dt`. Correlation of option price with spot IS delta — a
+   deterministic function of spot, strike, time and sigma. A deep-ITM call
+   correlates ~+1 by construction. The matrix would encode MONEYNESS and nothing
+   else, and would drift across the expiry cycle from vega/theta — a spurious
+   time-varying artifact of contract mechanics. **Same failure mode as VARIANT
+   B** (a component fed the very inputs it was meant to independently confirm).
+2. **The genuinely independent quantities are options-market FLOW / price-of-
+   risk measures, not price-correlation measures** — IV change, IV spread, skew,
+   term structure, OI/dOI, PCR, options-volume/stock-volume (O/S). The
+   correlation framing captures precisely the DERIVABLE half.
+3. **The best modern evidence says the headline predictors are an artifact.**
+   Muravyev, Pearson & Pollet (2025, JFE 172): IV spread and skew predict
+   returns because they PROXY FOR THE STOCK BORROW FEE, omitted from the IV
+   calculation; predictability falls >=2/3 when high-borrow-fee stocks are
+   excluded. Muravyev, Pearson & Broussard (2013, JFE 107:259-283) tested
+   "options lead spot" directly on tick data: on put-call-parity disagreements
+   **the OPTION quotes adjusted, not the stock quotes**; options' information
+   share ~6.25%. Cremers & Weinbaum (2010, JFQA 45) reports decay WITHIN its own
+   sample. Xing/Zhang/Zhao (2010, JFQA 45) smirk: weekly-to-monthly.
+4. **The mechanism does not transplant to India.** Both surviving explanations
+   (Johnson & So 2012 JFE 106; MPP 2025) are SHORT-SALE-COST stories. India bans
+   naked short selling in the cash market; SLB is thin. ASSUMPTION: suppressing
+   the borrow-fee channel attenuates the artifact — **which removes the artifact
+   and the alpha together.** Nothing here creates an Indian edge.
+5. **FRICTION kills it independently and unfixably.** All documented effects are
+   WEEKLY (Cremers-Weinbaum 50bp/wk; Johnson-So 0.34%/wk = 19.3%/yr LONG-SHORT
+   gross, long-only half ~10%). Drag at H=5 = **11.99%/yr** statutory,
+   **17.03%/yr** at the 0.05%/side floor. Same shape as the legacy kill.
+   **Unfixable by construction: the signal's informativeness IS its decay rate**
+   — you cannot make this family low-turnover without destroying the signal.
+   Directly contradicts the roadmap's "new families must be low-turnover by
+   design."
+6. **Universe mismatch.** F&O eligibility (SEBI/HO/MRD/MRD-PoD-2/P/CIR/2024/116,
+   2024-08-30) = top-500 mcap + liquidity floors; current count **~185-208**
+   names (sources disagree — a RANGE, not a point). Habitat is mcap ranks
+   **201-1000**. Thin intersection, and F&O membership is time-varying +
+   survivorship-biased — a PIT F&O panel would be a fresh A1-scale build.
+7. **No usable Indian evidence.** Searched four query formulations; found no
+   peer-reviewed cross-sectional single-stock NSE study with net-of-cost
+   results. What exists is index-level, short-sample or descriptive. A Springer
+   (2024) chapter reports the call-put ratio effect **does NOT hold** for Indian
+   index options. Evidence vacuum, not a search failure.
+
+**Data (FACT, no fetch performed):** NSE F&O bhavcopy carries settlement price,
+OI and volume but **NOT implied volatility** — IV must be computed, so you own
+the discount-rate, dividend and (per MPP 2025) **borrow-fee assumptions that are
+the whole ballgame**, and the Indian borrow fee is effectively unobservable
+historically. **You would be computing the contaminated version with no way to
+decontaminate it.** Depth is ample (archive from 200301; F&O-UDiFF format change
+2024-07-08, nine days before the seal cutoff) — depth is NOT the constraint, the
+universe is. **Gated by OPEN OPERATOR DECISION 1** (NSE ToU prohibits automated
+collection).
+
+**Queue position: FIFTH.** Would have to displace SPEC-SRA-01, the weakest thing
+queued — and it is weaker: same friction null PLUS universe mismatch PLUS a data
+blocker PLUS two top-journal papers against the mechanism. It displaces nothing.
+As a CONDITIONING LAYER the only coherent story is a negative/veto screen (adds
+zero turnover to a host book), but it can speak about ~185-208 names only and
+the IV-term-structure variant is largely an earnings-date marker — i.e.
+re-litigating SPEC-PEAD-01's territory with worse data.
+
+**NO cheap diagnostic is proposed, deliberately.** The obvious free one —
+correlate option prices with spot — IS the tautology in (1) and would return a
+spuriously impressive number. There is no cheap test that separates signal from
+delta without first building the full per-strike IV surface, which is the
+expensive part and is ToU-blocked.
+
+**The ONE bounded action:** fold NSE per-strike options history into the Accord
+Fintech (ACE Datafeed) enquiry that OPEN OPERATOR DECISION 1 already
+contemplates — **third independent surfacing** of that vendor in this program;
+it self-describes as an authorised NSE/BSE/MCX/NCDEX vendor selling historical
+derivatives data. NSE also has a named paid historical-EOD product (unlike the
+BSE case, where the Rs.9L/yr feed was verified real-time-only). One extra line in
+an email already likely to be sent. **This does NOT resurrect the hypothesis** —
+reasons 1-6 are independent of data access — but a licensed NSE history route is
+a durable capability asset regardless.
+
+**Stated gaps (TRAP 6 discipline, NOT silently omitted):** NSE paid-EOD SKU list
+/ depth / price — page fetch TIMED OUT, UNKNOWN. Whether Accord or NSE sells
+per-strike option-chain history vs futures/index only — UNKNOWN. F&O constituent
+count is a range (182/185/~208). **MPP 2025 full text returned HTTP 403; the
+"two-thirds" decay figure is SINGLE-SOURCED from a RePEc listing plus a
+University of Illinois Gies press summary and MUST be re-verified from the paper
+before being cited in any spec.**
