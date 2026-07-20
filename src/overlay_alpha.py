@@ -127,6 +127,37 @@ def reconstruct_overlay(
     )
 
 
+def default_execute_overlay(
+    universe_paper: pd.DataFrame,
+    overlay: pd.DataFrame,
+) -> pd.DataFrame:
+    """DEFAULT_EXECUTE scope (RULING 8, DECISIONS.md) — operator standing policy:
+    silence on a rec means the system's recommendation was accepted as-is.
+
+    Returns synthetic EXECUTE/size-1 rows for every live-window rec carrying NO
+    affirmative row in the overlay log. Feed to
+    join_overlay(..., provenance="DEFAULT_EXECUTE").
+
+    NOT decision-time evidence, and never merged with it: an inferred row cannot
+    distinguish "reviewed and accepted" from "never looked". AB_PREREG analyses
+    2-4 admit the DECISION_TIME scope only; this scope is reported beside them.
+
+    Nothing is written to overlay_log.csv. The log stays a record of decisions
+    the operator actually entered — materialising inferred rows into an
+    append-only file would destroy, irreversibly, the ability to ever ask which
+    decisions were affirmed. The inference is cheap and reproducible; the
+    distinction it would erase is not.
+    """
+    logged = set(last_per_key(overlay)["rec_key"]) if not overlay.empty else set()
+    missing = universe_paper.loc[~universe_paper["rec_key"].isin(logged)]
+    return pd.DataFrame(
+        [{"ts_local": None, "rec_key": k, "decision": "EXECUTE", "executed_size": 1,
+          "reason": "default: unlogged, standing accept-the-rec policy (RULING 8)"}
+         for k in missing["rec_key"]],
+        columns=["ts_local", "rec_key", "decision", "executed_size", "reason"],
+    )
+
+
 def reconcile_fills(joined: pd.DataFrame, ledger: pd.DataFrame) -> pd.DataFrame:
     """Reconcile paper-leg exit prices vs actual fills recorded in trades_log,
     for EXECUTED overlay trades only. This is the only settlement check
@@ -164,8 +195,9 @@ def weekly_summary(joined: pd.DataFrame, ledger: pd.DataFrame | None = None) -> 
     excluding flag_ambiguous_same_bar trades."""
     if "provenance" in joined.columns and joined["provenance"].nunique() > 1:
         raise ValueError(
-            "weekly_summary: mixed provenance — RECONSTRUCTED and DECISION_TIME "
-            "scopes must never be merged (pre-log window ruling)"
+            "weekly_summary: mixed provenance — DECISION_TIME, RECONSTRUCTED and "
+            "DEFAULT_EXECUTE scopes must never be merged (pre-log window ruling; "
+            "RULING 8). Got: " + ", ".join(sorted(joined["provenance"].unique()))
         )
     settled = joined.loc[joined["exit_date"].notna()].copy()
     if settled.empty:

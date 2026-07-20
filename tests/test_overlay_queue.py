@@ -194,16 +194,25 @@ def test_cli_runs_and_never_writes_the_real_log(tmp_path):
     assert real.read_text() == before  # byte-identical
 
 
-def test_real_overlay_log_has_zero_data_rows():
+def test_real_overlay_log_carries_no_synthesized_rows():
     """Guard rail. If tooling ever seeds this file, this test fails loudly.
 
     The log records the operator's OWN decisions and is the object of
     AB_PREREG analyses 2-4; a generated row would be indistinguishable from a
     genuine one and would silently corrupt the study.
+
+    RULING 8 (DEFAULT_EXECUTE) is computed at ANALYSIS time and must never be
+    materialised here — hence the marker check rather than a row count. The
+    file legitimately gained operator rows on 2026-07-20; it must never gain a
+    row this repo's own code wrote.
     """
     lines = (REPO / "governance" / "overlay_log.csv").read_text().splitlines()
     assert lines[0] == "ts_local,rec_key,decision,executed_size,reason"
-    assert [ln for ln in lines[1:] if ln.strip()] == []
+    for ln in [x for x in lines[1:] if x.strip()]:
+        assert not any(m in ln for m in ("default:", "reconstructed:")), (
+            f"synthesized row found in the real overlay log: {ln}"
+        )
+        assert ln.split(",", 1)[0].strip(), f"row with no decision timestamp: {ln}"
 
 
 # --- ingest health -----------------------------------------------------------

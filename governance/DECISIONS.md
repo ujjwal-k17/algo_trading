@@ -348,3 +348,210 @@ ASSUMPTION with no measured basis.
   original assumption as midpoint — reported in every trial write-up while SPA
   gates. Until the operator sets it, trials report DSR at 0.5 and cite this
   ruling for the caveat.
+
+## 2026-07-20 — RULING 8: unlogged rec = accepted recommendation (DEFAULT_EXECUTE)
+
+**Operator ruling.** Standing policy: if the operator logs no overlay decision
+for a rec, the decision was to accept the system's recommendation as issued —
+EXECUTE at full slot size. Silence is an affirmative default, not an absence.
+
+- FACT: the overlay is veto/reduce only. There is no action the operator can
+  take that is BOTH silent AND different from the recommendation, so silence is
+  behaviourally indistinguishable from accept-as-issued at the decision layer.
+- FACT: the decision layer is separate from the entry layer. A rec the operator
+  accepted may still never enter (`AUTO_EXPIRED_5_SESSIONS`, 14 of 25 in
+  `trades_log_ee7ad13.csv`). RULING 8 speaks ONLY to the decision; entry
+  outcomes continue to be graded as SYSTEM_NO_ENTRY where the gate did not fire.
+- Implemented: `overlay_alpha.default_execute_overlay()`, provenance
+  **`DEFAULT_EXECUTE`**. `weekly_summary` raises on ANY mixed provenance, so the
+  scope cannot be merged with DECISION_TIME or RECONSTRUCTED by accident.
+
+**Scope limit (binding).** DEFAULT_EXECUTE is NOT decision-time evidence.
+An inferred row cannot distinguish "reviewed and accepted" from "never looked",
+and AB_PREREG analyses 2-4 admit the DECISION_TIME scope only. RULING 8 does not
+amend AB_PREREG and does not move the 2026-09-27 read date. The default scope is
+reported BESIDE the pre-registered analyses, never inside them.
+
+**Nothing is written to `overlay_log.csv`.** The log remains a record of
+decisions the operator actually entered. The file is append-only, so
+materialising inferred rows would irreversibly destroy the ability to ask which
+decisions were affirmed — while the inference itself is cheap and reproducible
+at analysis time. ASSUMPTION: this is the operator's intent; if the operator
+instead wants inferred rows materialised, that is a new ruling.
+
+**Consequence the operator accepted, recorded here so it is not re-litigated:**
+under RULING 8 an unlogged day yields EXECUTE rows, so analyses 3 (veto quality)
+and 4 (reduce efficacy) gain NOTHING from silence — they need affirmative VETO
+and REDUCE rows and will stay at n=0 without them. RULING 8 removes the cost of
+a missed EXECUTE day; it does not remove the need to log an intervention on the
+day it is made.
+
+## 2026-07-20 — Legacy variant scopes (outcome-blind) + production verification
+
+Two operator-proposed variants were scoped OUTCOME-BLIND. **No trial was spent;
+no backtest was run; no return, IR, Sharpe or hit-rate was computed.** Both
+verdicts below are design/feasibility findings, not results, and neither is
+charged against the register's trial count.
+
+### VARIANT A — remove the 5-session time exit; 5 -> 10 slots; hold to signal
+
+**Verdict: testable after a ~7-13 day build, but MISAIMED as specified.**
+
+- FACT (arithmetic, `src/costs_in.py` + RULING 5, no outcome data): one delivery
+  round trip costs **0.23782%** of a Rs.1,00,000 slot (buy Rs.118.74 / sell
+  Rs.119.08 incl. DP Rs.15.34). With every slot filled and average holding
+  period H sessions, book drag = `(252/H) x 0.23782%`.
+- FACT (consequence): drag is a function of **H alone and is INDEPENDENT of slot
+  count** — 5 slots at H=5 and 10 slots at H=5 both drag **11.99%/yr**. The
+  5->10 change buys diversification, **not** friction relief. Drag is exactly
+  proportional to 1/H, so **H=15 sessions cuts friction to one third** at every
+  slippage level (11.99% -> 4.00% statutory-only; 17.03% -> 5.68% at the 0.05%
+  floor).
+- FACT: the kill cited 1.6 round-trips/day against a NOMINAL 5-day timer, which
+  implies realised **H ~= 3.1 sessions**. Turnover ran ~60% hotter than the
+  timer, i.e. **SL/T2/T1 were the binding exits and the timer rarely fired.**
+  ASSUMPTION: the cause is early target/stop hits (the gap itself is FACT).
+- **Therefore removing the timer raises the CEILING on H; it does not set H.**
+  The lever that actually moves H is the target/stop levels — a different and
+  larger axis than the one proposed.
+- FACT: machinery exists. `~/vendor/legacy-engine/backtest_multiyear.py`
+  generates ranked picks for arbitrary past dates (`day_ranking` applies an
+  as-of filter before scoring); `SLOTS`/`HOLD_SESS` are two constants and three
+  existing harnesses already import-and-override them. Build items: repo-side
+  loader replacing the sqlite `load_bt` (rule 2), an UNADJUSTED dev-window panel
+  (RULING 4h level-check basis) or a ruling accepting adjusted, universe +
+  industry map, cost accounting (the harness has none), TRAP 1/6 coverage
+  assertions.
+- FACT: `SWEEP_HOLDING.md` (2026-07-14) already swept `HOLD_SESS` in
+  {1,3,5,10,20} at a cost of 5 trials, with `SLOTS=5` fixed throughout. Its
+  results were deliberately NOT read (outcome contact, unauthorized). The
+  10-slot interaction is genuinely unswept.
+- FACT: the frozen clone's own CLAUDE.md declares Signal-1 CLOSED and classes
+  exit/universe/cost changes on that chassis as VARIANT-OF-CLOSED-SIGNAL absent
+  a signed classification. **OPEN — operator classification required before any
+  build.**
+- Queues behind OPEN OPERATOR DECISION 2 (habitat defect), same as C1 attempt 2.
+
+### VARIANT B — raise vision weight / lower technical weight in the top-5 scoring
+
+**Verdict: NOT TESTABLE AS SPECIFIED, and NOT CITABLE EVEN IF RUN. Recorded as a
+disclosed dead end (TRAP 4: a disclosed gap is an asset; an invented number is a
+liability at due diligence).**
+
+- FACT: no dev-window (< 2024-07-17) vision scores exist anywhere accessible. A
+  repo-wide content grep for `vision_score` across `data/` returned ZERO files.
+  Earliest vision-adjacent artifact is **2026-06-18** — inside the Tier 1
+  look-don't-tune window. Dev-window coverage is zero, not sparse.
+- Four INDEPENDENT disqualifiers on the regenerate-scores-now route, any one
+  sufficient:
+  1. **Memorisation is unfalsifiable in this design.** A model trained past the
+     dev window scoring a historical chart may know the outcome; no detection
+     test of citable strength was identifiable. (Placebo-on-synthetic tests a
+     different distribution; symbol masking fails on recognisable index-wide
+     event shapes; a beats-baseline test is itself outcome-conditional = a
+     trial.)
+  2. **The renderer leaks and has no as-of mode.** `charts.py` stamps
+     `today_ist()` into the chart TITLE (the model reads the date off the
+     image), and `render_chart` unconditionally takes the last N sessions with
+     no as-of parameter. An as-of render requires modifying the frozen clone
+     (FORBIDDEN, rule 7) or reimplementing it — at which point the study
+     measures a different system. Mitigating FACT: MAs are computed on full
+     history then reindexed, so indicator warmup does NOT leak forward.
+  3. **The model pin is a mutable alias** (`claude-sonnet-4-6`), not a dated
+     snapshot — the study is not reproducible, which matters at PMS
+     registration.
+  4. **Non-determinism over a step function** — `compute_vision_score` maps
+     categoricals through a fixed rule table, so one flipped category moves the
+     score 25 points. Discontinuous, not smooth noise.
+- FACT (undercuts the operator's stated rationale): vision is NOT an independent
+  read of the chart. `vision.py:59-86` feeds the model the technical metrics
+  (RSI-14, ADX, price-vs-SMA50/200, ROC-21, dist-from-52w-high, vol-vs-avg20)
+  alongside the image, and the prompt instructs it to reconcile against them
+  with hardcoded rules. The docstring records WHY: unconstrained pixel-only
+  reads produced STAGE_MISCLASSIFIED x4 and RESISTANCE_MISREAD x6 — **the
+  unanchored vision read was WORSE, and anchoring to technicals was the fix.**
+- Precedent applies: `research_register_v2.csv` INHERITED-SILVER-0001 (ESTIMATE
+  >=8 trials, AMENDMENT C) bars the Silver ML engine's forecasts from feeding
+  SPEC-AG-01 for contamination by unregistered outcome iteration. Pretraining on
+  the outcome period is a stronger and less auditable contamination.
+
+### Production verification (operator-run, read-only, HEAD 8e4e6f7)
+
+- FACT: the top-5 is a **gate cascade**, not the head of a weighted sum. Vision
+  is absent from the top-20 stage entirely (`composite_score`, five 0.20 TA
+  weights, selects the 20; vision is called ON the 20 afterwards). Live weights
+  are `_FINAL_WEIGHTS_V2` (ta 0.40 / vision 0.10 / fundamental 0.20 / catalyst
+  0.15 / quality 0.10 / reversal_rs 0.05). An LLM binary veto on
+  `include_in_top5 == "no"` is a strictly more powerful lever than the 0.10
+  weight. Macro modifier is 0.70-1.155 (1.10 base stacking with 1.05 TAILWIND),
+  applied inside `compute_final_scores` before the sort.
+- FACT: the dead-`config.FINAL_WEIGHTS` defect was REAL at clone pin ee7ad13 and
+  was FIXED in production on 2026-07-18 (commit f67fc20) — the symbol was
+  deleted, not left dead. **No config-vs-live divergence exists at HEAD**, and
+  `backtest_multiyear.py:42` imports `_FINAL_WEIGHTS_V2` from `final_score`, so
+  harness and production share one dict.
+- FACT: `run_phase2.py:699-714`'s `blended = 0.80*composite + 0.20*vision` is
+  **display-only** — read three times inside a 20-line block, never attached to
+  `top20`, never persisted, never reaching selection. But it prints as
+  "Interim re-rank: TA 80% + Vision 20%" with `new_rank` and up/down arrows,
+  asserting a re-rank that never happens, at weights contradicting the live
+  40/10-of-six, over a two-factor number that ignores fundamentals, catalyst,
+  quality, reversal-RS and the macro modifier. Same shape as the gap #74
+  red_flags defect: not a wrong computation, a human-facing number contradicting
+  the live one.
+- **CLOSED 2026-07-20 (was OPEN/UNKNOWN) — human-facing only, NOT model-input
+  contamination.** TRACED: `observe_monday.py:40-47`'s `evening_log_since_start`
+  returns RAW unfiltered text (`rfind` anchor, slice to EOF, no end bound), and
+  the misleading table IS inside the returned string (verified empirically:
+  anchor at `evening.log:3416`, header at `:4068`). But its single caller
+  (`:59`) only regex-mines for counters/source tags and renders a Telegram
+  message — no `anthropic` import, no prompt construction, absent from the
+  repo-wide LLM call-site grep. All four `evening.log` readers are non-LLM;
+  every `client.messages.create` is fed from DB rows, charts or DataFrames,
+  never log text. `observe_monday.py` is additionally hard-gated to
+  `TARGET_DATE = "2026-07-06"` and `sys.exit(0)`s otherwise, so it currently
+  no-ops.
+- FACT (previously ASSUMPTION, now TRACED): the block DOES execute on the
+  scheduled path — plist -> `guarded_run.py` (dup2 fds -> execv) ->
+  `run_evening.py` -> `run_phase2.__main__` -> `main()`; lines 692-714 sit at
+  plain function-body indentation with no flag or verbose gate. Empirically
+  `grep -c "Interim re-rank" logs/evening.log` = 3, one per run (16/17/20 Jul),
+  each within minutes of the 16:30 trigger. It is written to disk nightly.
+- **LATENT RISK (recorded; not a defect today).** The contamination boundary is
+  BEHAVIOURAL, not structural: the raw slice CONTAINS the misleading table and
+  is safe only because the current caller happens to regex-mine it. Any future
+  path that pipes `evening_log_since_start()` output into a prompt would
+  contaminate a model with a stated weighting (80/20 over two factors) that
+  contradicts live scoring (40/10 of six) — silently, in this program's
+  characteristic shape (TRAP 6). The durable fixes are upstream and cheap:
+  correct the printed label, or stop printing the block. Hardening the consumer
+  would leave the trap armed for the next one.
+- FACT: daily artifacts do NOT carry `vision_score` or `composite_score` —
+  `top5_report_data*.csv` has `final_score` only; `vision_support`/`_resist` are
+  price LEVELS, not scores. Both live in sqlite alone.
+  **RECOMMENDED (outcome-blind, no trial): persist both per candidate into the
+  sealed snapshot going forward.** That is the difference between being able to
+  ask the Variant B question in 12 months and not. It also unlocks the free
+  rank-perturbation diagnostic (how often the top-5 set changes under a weight
+  delta) permitted by CONTAMINATION_POLICY.md.
+- Doc drift, NOT corrected (production is off-limits to this repo):
+  `SYSTEM_MASTER_REFERENCE.md:502-503, 1291-1292` and `AUDIT.md:35` still
+  describe `config.FINAL_WEIGHTS` as existing-but-dead — false at HEAD.
+  `Context.md:319` is correct. This stale documentation is the likely source of
+  the clone-derived error above.
+
+## 2026-07-20 — RULING 9: clone-derived claims about PRODUCTION require HEAD check
+
+`~/vendor/legacy-engine` is pinned at ee7ad13 and is a SNAPSHOT as well as an
+import-only source. A claim read out of the clone is a claim about the pin, not
+about the running system.
+
+**Binding:** any assertion that production currently behaves in some way, when
+sourced from the clone, must be verified against production HEAD by the operator
+(read-only) before it is acted on, cited, or written up as fact. Verified
+2026-07-20 at cost: a real-at-pin defect was reported as live five days after it
+had been fixed upstream.
+
+Corollary: production DOCUMENTATION can be stale in the same way and is not
+evidence of current behaviour — see the `SYSTEM_MASTER_REFERENCE.md` /
+`AUDIT.md` drift recorded above. Prefer reading the code at HEAD.
