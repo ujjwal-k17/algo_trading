@@ -177,6 +177,24 @@ protocol.
   tape earns at most ONE forward re-test — the cost-based kill verdict
   stands regardless.
 - `DECISIONS.md`: every ruling with FACT/ASSUMPTION tags — the audit trail.
+  Live rulings: 1 rec_key · 2 Tier 1 look-don't-tune · 3 ingest scope · 4 SOP
+  conventions · 5 cost stack · 6 freeze consumes no shadow slot · 7 inference
+  doctrine (below).
+- **INFERENCE DOCTRINE (RULING 7, binding).** **Hansen SPA gates; Deflated
+  Sharpe reports.** SPA bootstraps the actual return series and depends on no
+  unmeasurable constant. DSR's `SR0 = trial_sr_std × m(N)` scales LINEARLY with
+  the dispersion but only logarithmically with trial count — `m(52)=2.29`, and
+  one more trial moves the bar 0.32% while doubling the dispersion moves it
+  100%. `trial_sr_std` is UNMEASURABLE here (reconstruction from legacy
+  artifacts gave 3 distinct variants, 95% CI [0.35, 4.22]) and that route is
+  CLOSED. Report DSR at 0.5 with the RULING 7 caveat until the operator sets
+  the reporting band (proposed 0.35/0.50/0.70 — still PENDING). Never write a
+  DSR floor into a frozen kill line.
+- **TRIAL ECONOMICS (corollary, and counter-intuitive).** A marginal trial is
+  CHEAP — it moves the deflation bar ~0.3%. The genuinely scarce resources are
+  the **2 shadow slots** and the **single sealed test per family, ever**. Do
+  not refuse a useful dev-data trial to "save trials"; do guard the slots and
+  the sealed test absolutely.
 - `specs/`: per-family frozen specs. A spec is BINDING only once its `sha256`
   is recorded alongside it and its register row exists (same commit); until
   then the file carries a DRAFT banner and may be edited freely. After freeze,
@@ -189,15 +207,20 @@ protocol.
 - `SOP_OF_RECORD.md`, `LEGACY_PIN.md`, `README_overlay.md`; repo-root
   `SETUP_OF_RECORD.md` = full inventory + open items.
 
-## CURRENT STATE (as of 2026-07-19)
+## CURRENT STATE (as of 2026-07-20)
 
 - Paper leg 25/25 settled: **ENTERED (gate-respecting headline) 11 recs =
   −1.32R**; ASSUMED_ENTRY 14 recs = +6.50R (tradeability audit: 12/14
   in-zone but volume-trigger unconfirmed, 2/14 gap-away; no demotion).
   Rec universe 18/18 settled. NAV: 15 daily marks, −0.70% since 2026-06-29.
-- **Overlay log EMPTY — most time-sensitive item.** AB_PREREG analyses 2–4
-  have n=0 until decision-time logging starts; reconstruction proved zero
-  vetoes are inferable (production ledgers every rec).
+- **Overlay log EMPTY — most time-sensitive item in the program.** Still 0
+  data rows as of 2026-07-20: **21 of the 60–90 day live window already
+  elapsed** (started 2026-06-29), i.e. a quarter to a third of the observable
+  period gone. AB_PREREG analyses 2–4 have n=0 until decision-time logging
+  starts; reconstruction proved zero vetoes are inferable (production ledgers
+  every rec). Lost days are unrecoverable and the read date (2026-09-27) does
+  not move. Cost to fix: one `overlay '<rec_key>' ...` call per live rec.
+  Nothing in the Tier 2 pipeline outranks this.
 - Advancing Tier 2 candidates: SPEC-QFM-01 (fundamental deltas, shadow slot
   1), SPEC-PEAD-01 (earnings drift, slot 2 — its CAR study is its one Tier 2
   trial, only after spec hash-freeze), SPEC-AG-01 (MCX Silver carry, queued
@@ -258,6 +281,33 @@ protocol.
   `data/reference/tri/`; Nifty200 Momentum 30 launched 2020-08-25, its
   pre-launch history is vendor-backfilled — flag in any use).
 
+## TRAPS (paid for in real trials — do not re-learn these)
+
+1. **A handful of bad rows can silently destroy years of signal.** 33 yfinance
+   holiday placeholders (flat OHLC, volume 0) for 4 symbols — 132 rows of
+   2.48M, 0.005% — NaN-poisoned the wide pivot for EVERY other symbol, and
+   `expr._rolling_max` uses `min_periods=252`, so one NaN blocks the whole
+   trailing window. First defined nearness moved 2016-01-08 → 2018-10-26 and
+   C1-52WH-0001 ran three rebalances screening NOTHING. Guards now:
+   `build_price_panel.drop_non_trading_dates` (quorum filter) and a
+   signal-starvation hard stop in `backtest_52wh` (`min_ranked_frac`).
+   **General rule: after any panel rebuild, check signal COVERAGE by date
+   before trusting a result — row counts look fine when coverage is dead.**
+2. **Audit the run BEFORE reading its headline.** The C1 schedule printed
+   `ranked 0` three times; the number was on screen and got read past because
+   the verdict line was more interesting. Read diagnostics first, verdict last.
+3. **Fix inference parameters BEFORE outcome contact, in writing.** Choosing
+   `trial_sr_std` after seeing whether it helps a family is precisely the
+   contamination the policy exists to stop. When it was pre-committed, the
+   measured value came out HIGHER than assumed — i.e. against the family under
+   test. That is the discipline working.
+4. **Never proxy a blocked sensitivity.** Spec §7 wants EW-vs-MW; the PIT store
+   lacks absolute mcap, so `backtest_52wh` RAISES rather than substituting a
+   rank-derived proxy. A disclosed gap is an asset; an invented number is a
+   liability at due diligence.
+5. **A withdrawn result is still a spent trial.** C1-52WH-0001 is not
+   reclaimable. The register is append-only — corrections are new rows.
+
 ## ROADMAP (the path to the fund)
 
 Phase 1 — live window (2026-06-29 → read date 2026-09-27):
@@ -268,22 +318,34 @@ Phase 1 — live window (2026-06-29 → read date 2026-09-27):
    measurement stack + verdict on overlay skill; legacy kill stands.
 
 Phase 2 — Tier 2 pipeline (parallel):
-4. Close the five data unknowns (they gate honest testing).
-5. Verify statutory costs vs a current contract note — every candidate is
-   judged net-of-friction with an explicit turnover budget.
+4. Close the remaining data unknowns (four; see SETUP_OF_RECORD.md). Three of
+   the original five closed 2026-07-19 — PIT depth, cost stack, TRI depth.
+5. Every candidate is judged NET of the RULING 5 friction stack with an
+   explicit turnover budget and a separate slippage parameter. (Contract-note
+   reconciliation is operator-WAIVED, not pending — RULING 5.)
 6. Hash-freeze specs BEFORE outcome contact; develop pre-cutoff only; spend
    each family's single sealed test only when earned. Most families die —
-   that is the protocol working.
+   that is the protocol working. SPA gates every verdict (RULING 7).
+7. **Immediate 52WH decisions queued for the operator:** (a) the DSR reporting
+   band, (b) C1 ATTEMPT 2 authorization — rebuild the panel with the quorum
+   filter, then a new `C1-52WH-0002` row; expected gain ~2 extra years of
+   walk-forward (from ~2016 vs 2018-04) and a clean 2018-2020 crash leg.
 
 Phase 3 — survivor to fund:
-7. Sealed-test survivor → operational-door paper/forward trading → small
+8. Sealed-test survivor → operational-door paper/forward trading → small
    live capital on the same A/B measurement stack.
-8. Capacity analysis at ₹100 Cr (must survive its own footprint) → PMS
+9. Capacity analysis at ₹100 Cr (must survive its own footprint) → PMS
    registration + auditable track record → AIF Cat III. The governance
    trail is a due-diligence asset — keep it pristine.
 
 Bottleneck lesson: gross alpha was never the constraint; friction was.
 New families must be low-turnover by design.
+
+Standing caution on 52WH specifically: the family's own evidence base says the
+long leg does NOT beat the index — the edge is the negative screen, and the
+spec frames it as a layer composable into QFM/PEAD, not a standalone book.
+Before spending more on it as a solo family, ask whether its best use is inside
+another selection engine.
 
 ## ENVIRONMENT
 
