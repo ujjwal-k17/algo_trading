@@ -848,3 +848,66 @@ count is a range (182/185/~208). **MPP 2025 full text returned HTTP 403; the
 "two-thirds" decay figure is SINGLE-SOURCED from a RePEc listing plus a
 University of Illinois Gies press summary and MUST be re-verified from the paper
 before being cited in any spec.**
+
+## 2026-07-21 — RULING 10: Tier 1 OHLC ingest quality gate (null closes + coverage)
+
+Two defects found in `data/market/` while monitoring live positions RADICO and
+DIXON. Both are in THIS repo's nightly ingest (`com.alpha.ingest` ->
+`scripts/ingest_snapshot.sh` -> `src/fetch_ohlc.py`), not production.
+
+**Defect 1 — every newest close was NaN.** FACT: `ohlc_2026-07-21.parquet` held
+544 rows across the correct 34 symbols over the correct date range, with **34 of
+34 symbols carrying a NaN close on the newest bar** (open/high/low all present).
+`ohlc_2026-07-20.parquet` had the same 2026-07-20 close populated correctly, so
+the data existed publicly — the 01:00 run captured it defectively (ASSUMPTION:
+yfinance's most recent daily bar is provisional at 01:00 IST). `dropna(how="all")`
+only drops rows where EVERY field is null, so these survived; the summary print
+reported row count, symbol count and date range — never null CONTENT. **The
+settlement path reads exactly this file** (`scripts/run_paper_leg.py:43`,
+"newest data/market fetch first"), as does NAV.
+
+**Defect 2 — the fetch universe was frozen.** FACT: `ledger_symbols()` read recs
+only from `data/legacy_snapshot/recs/`, whose newest file is dated **2026-07-10**.
+The nightly ingest deposits new recs under `data/sealed/raw/<date>/`, which was
+never read. Any symbol first recommended after the snapshot date was therefore
+never fetched: **DIXON — picked 2026-07-16 and held live for three sessions —
+had no OHLC in the store at all.** Both monitoring agents had to bypass the
+store and fetch from yfinance to answer basic questions about live positions.
+
+**RULING (binding):**
+- A row whose `close` is null is **DROPPED, never written**. ASSUMPTION, and the
+  reasoning: a missing row is honest and `paper_leg`/`build_nav` already REFUSE
+  to approximate over gaps (by design); a NaN close masquerading as a fetched
+  observation poisons them silently. Absence is recoverable; fabricated data is
+  not — the same principle as the vision `synthesis`-vs-`vision` distinction
+  recorded 2026-07-20.
+- Every fetch **reports quality and coverage explicitly** — rows in/out, rows
+  dropped, symbols present/expected, symbols missing by name, newest date — and
+  warns to stderr on any drop or any missing symbol. A fetch where nothing
+  survives validation **exits 2**, so launchd records a failure rather than
+  writing an empty file over a good one.
+- The fetch universe reads recs from **both** `data/legacy_snapshot/recs/` and
+  `data/sealed/raw/`, so the live rec stream extends it automatically.
+
+**Implemented + tested:** `src/fetch_ohlc.py` (`validate_ohlc`,
+`_rec_symbols_from`, extended `ledger_symbols`), `tests/test_fetch_ohlc_quality.py`
+(8 tests, incl. a live-store guard asserting the newest ingest has zero null
+closes, and a source-path pin that fails if `data/sealed/raw/` is dropped from
+the search). Suite 233 -> 241.
+
+**Data repaired:** the defective `ohlc_2026-07-21.parquet` was backed up out of
+tree and re-fetched under the new gate — **731 rows, 43/43 symbols, 0 null
+closes, newest 2026-07-21** (previously 544 rows, 34 symbols, 34 null closes,
+newest 2026-07-20). DIXON now present (2026-07-21 close 14,118.00, matching an
+independent yfinance fetch exactly). `data/market/` is derived, re-fetchable and
+explicitly idempotent-per-day, so a defective daily parquet is repairable by
+re-fetch — this is NOT the append-only `data/sealed/raw/` corpus and no evidence
+was overwritten.
+
+**This is the fourth instance of the program's characteristic failure in one
+day** (TRAP 6): a correctly-named, correctly-sized, correctly-dated artifact
+that is silently empty of the one field that matters, passing a health check
+that only ever looked at the container. `overlay_queue.ingest_health()` reports
+green for exactly this file — it verifies a non-empty dated directory exists,
+not that the closes inside it are non-null. **Guarding the container is not
+guarding the content.**
