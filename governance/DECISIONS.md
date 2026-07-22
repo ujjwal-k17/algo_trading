@@ -911,3 +911,197 @@ that only ever looked at the container. `overlay_queue.ingest_health()` reports
 green for exactly this file — it verifies a non-empty dated directory exists,
 not that the closes inside it are non-null. **Guarding the container is not
 guarding the content.**
+
+## 2026-07-22 — RULINGS 11 and 12 adopted, with a PROVENANCE NOTE
+
+**These two rulings were drafted and adopted by the AI assistant, not authored
+by the operator.** The operator's instruction was "Take decisions as you think
+is right" (2026-07-22), following "Go" on an outcome-blind Tier 2 analysis pass.
+That is a genuine delegation and these rulings are in force — but the
+distinction is recorded because this file is a due-diligence artifact, and a
+reader at registration is entitled to know which rulings carry a human author
+and which do not.
+
+Both are **conservative in direction** (they stop work; neither authorises
+spending, data acquisition, a trial, a slot, or a sealed test), both rest on
+outcome-blind analysis with the arithmetic shown, and both are reversible by a
+superseding ruling. Full working and full ruling text:
+`analysis/SRA_friction_hurdle.md`, `analysis/AG01_circularity.md`,
+`analysis/proposed_rulings_2026-07-22.md`.
+
+**If the operator disagrees with either, supersede it — do not edit it.**
+
+- **RULING 11 — SPEC-SRA-01 KILLED as a ₹100 Cr fund candidate.** Not to be
+  hash-frozen; `src/expr.py` NOT to be extended for it; `signal_sra.py` /
+  `run_trial_sra.py` not to be built; Stage S0 not to be run. Two independent
+  kills: capacity (₹5 Cr position vs the spec's own ₹2 Cr/day ADV floor = 250%
+  of a day's volume, 25 sessions to enter a 5-session hold) and net expectancy
+  (needs 1.15×–6.06× the legacy system's entire gross alpha depending on
+  slippage). NO TRIAL SPENT, no slot held or released. **Kill scope is narrow:**
+  the capacity kill vanishes at ₹1–5 Cr, so a small-capital variant remains open
+  via a NEW versioned spec — never an edit to SPEC-SRA-01.
+- **RULING 12 — SPEC-AG-01 demoted below SPEC-52WH-01; MCX depth spike
+  RE-SCOPED, not cancelled.** Decisive reason is statistical power, not the
+  circularity: the one design that escapes the circularity yields ~48–114
+  independent roll episodes over the whole dev window, which will not clear a
+  SPA gate charged against 52+ trials. Spike resequenced to lead with MCXCCL's
+  published DSP methodology (documentary, no endpoint touched, settles the
+  circularity to FACT either way). Two new blockers recorded: AG-01 has no cost
+  stack (RULING 5 is NSE cash-equity only), and AMENDMENT C bites hardest on the
+  seasonality fallback. NO TRIAL SPENT.
+
+## 2026-07-22 — RULING 13: microstructure diagnostic door (opening-bar volume share)
+
+Operator-authorized 2026-07-22. Full draft and reasoning:
+`analysis/proposed_ruling_13_2026-07-22.md`. **Unlike RULINGS 11 and 12, this
+ruling authorizes outcome contact and SPENDS A TRIAL.**
+
+- **FACT — the defect under test.** `preopen_check.py:420` and `:462` (frozen
+  clone) compute `v_rat = round((vol * 75) / avg_vol, 2)`, where `vol` is the
+  single 9:15–9:20 bar and `avg_vol` is `get_avg_volume_20d` — a 20-session
+  mean of DAILY volume. `synthesis.py:51-57` gates on `1.0x` / `1.2x`. The `75`
+  is the bar count of a 375-minute session (verified: yfinance returns exactly
+  75 bars/session). The extrapolation is valid ONLY if intraday volume is
+  uniform across the session, which it is not. Writing `s` for the opening
+  bar's true share of daily volume, `volume_ratio = s × 75 × (today_vol /
+  avg20_vol)`, so the `≥1.2` gate actually tests `today_relative_volume ≥
+  1.2 / (75 × s)`. At `s = 1/75` that is the intended "1.2× normal volume"; at
+  any larger `s` the gate loosens proportionally and may be near-vacuous.
+  **`s` has never been measured in this program.**
+
+- **FACT — neither existing door admits the measurement, and the outcome
+  conditioning is NOT the reason.** `load()` strips every row ≥ 2024-07-17.
+  `load_operational()` rejects three separate ways: a 250-name intraday panel
+  is not rec_key-joinable and trips the explicit "generic OHLC panel"
+  rejection (`data_gate.py:128-137`); ~half the reachable window
+  (2026-05-23 → 06-28) is in the seal gap (`:148-153`); and `data/workspace/`
+  is not an admissible source. Dropping the up-day filter would change none of
+  the three. A ruling is required to measure `s` in ANY form.
+
+- **FACT — the horizon is 60 days and is permanent.** Probed 2026-07-22:
+  yfinance serves 5-minute bars for the last 60 calendar days only ("The
+  requested range must be within the last 60 days"; Jan/Mar/Apr 2026 returned
+  0 rows). Reachable window ≈ 2026-05-23 → 2026-07-22, ~40 sessions. Deeper
+  intraday exists only via Kite Connect, which **BINDING RULE 3 forbids**;
+  this ruling does not disturb that. The operator's "last 6 months" is not
+  obtainable by any sanctioned route.
+
+- **RULING 13a — narrow diagnostic door.** Post-cutoff 5-minute OHLCV for the
+  250-name system universe may be fetched from yfinance and analysed **for
+  volume-share statistics only**. Door opens for this measurement and closes
+  on completion. `load()` / `load_operational()` are NOT amended; the carve-out
+  lives in the calling script.
+
+- **RULING 13b — no return is ever a measured quantity.** Dependent variable is
+  `s = first_5min_volume / full_day_volume`, a pure volume share. Price enters
+  ONLY as a sample filter (15:30 price > 09:20 price, where the 09:20 price is
+  the close of the 9:15–9:20 bar). No return is averaged, regressed, attributed
+  or reported. Any extension beyond a volume share requires a NEW ruling.
+
+- **RULING 13c — the conditioning is disclosed, not reclassified.** Selecting
+  on up-sessions IS outcome-conditional under `CONTAMINATION_POLICY.md`. It is
+  authorized because the operator specified it, and booked as a spent trial
+  rather than argued into the free-diagnostic bucket.
+
+- **RULING 13d — MEASUREMENT ONLY; no live change before 2026-09-27.** This
+  authorizes measuring `s`. It does NOT authorize altering the `75`, the `1.2`,
+  or any other live recommendation parameter. The recommended leg is the
+  instrument under measurement in `AB_PREREG.md` through the 2026-09-27 read
+  date; re-tuning it mid-window would change the instrument mid-experiment and
+  corrupt analyses 1–4. Acting on the result is a SEPARATE decision, on or
+  after the read date.
+
+- **RULING 13e — mandatory coverage assertions (TRAP 1 / TRAP 6).** The run
+  must report and the write-up must disclose: symbols fetched of 250; sessions
+  retained; bars/session (expect 75) with sub-quorum sessions dropped and
+  counted; placeholder rows (flat OHLC + zero volume) dropped and counted;
+  sessions failing the 09:15 bar-date check. The 09:15 bar is located by IST
+  clock time, never by position — mirroring the clone's own "NOT guessing
+  iloc[0]" discipline. A zero exit code and a non-empty row count are not
+  evidence.
+
+- **RULING 13f — reporting.** Report the operator-specified volume-weighted
+  mean (equivalently the pooled `Σfirst5 / Σfull_day`) AND the unweighted mean,
+  median, decile spread, an all-sessions control, and a liquidity-quintile
+  breakdown. Index membership is not carried in the EOD snapshot, so 2026-06-24
+  turnover quintiles stand in for index tier (ASSUMPTION, disclosed).
+
+- **Caveats carried into any write-up.** (a) Universe membership is the
+  2026-06-24 snapshot applied to the whole window, so May sessions use
+  marginally forward-looking membership — immaterial for a volume share.
+  (b) Window contains no reconstitution (March done, September pending) but
+  does contain expiry days, which concentrate volume. (c) ~40 sessions is
+  short and `s` may vary with regime: this is an estimate, not a constant.
+
+- **TRIAL ACCOUNTING — ONE TRIAL SPENT.** Register row
+  `DIAG-VOLSHARE-0001`; cumulative count 51 inherited + C1-52WH-0001 + this
+  = **53**. Charged against the **legacy** daily mid-cap momentum family,
+  already KILLED as a fund candidate — that family has no remaining sealed
+  test, so the contamination has no target. **NO shadow slot consumed** (QFM
+  and PEAD keep both; AG-01 and 52WH unaffected). **`FINAL_TEST` NOT set and
+  must not be** — no Tier 2 holdout is opened. Per the CLAUDE.md trial-economics
+  corollary a marginal trial moves the deflation bar ~0.3%; the scarce
+  resources are the 2 shadow slots and the single sealed test per family,
+  neither of which is touched.
+
+- **Runner.** `scripts/diag_open_volume_share.py`, which hard-fails unless
+  "RULING 13" appears in this file (TRAP 7: a check that fails loudly beats an
+  instruction that can be silently skipped).
+
+## 2026-07-22 — VERIFIED AT PRODUCTION HEAD: both volume projections are live and miscalibrated
+
+RULING 9 check performed for the DIAG-VOLSHARE-0001 finding. **FACT — HEADS
+DIFFER:** production HEAD = `5c099d77044579a48e254c04b475a01c33b5f142`; pinned
+clone (`~/vendor/legacy-engine`, `LEGACY_PIN.md`) =
+`ee7ad13228244f4f27e3d2d839baf70897ff24fe`. Verified by `git clone
+--no-hardlinks` of production into the session scratchpad (BINDING RULE 1
+permits cloning); production HEAD re-read after the clone and UNCHANGED.
+`preopen_check.py` DIFFERS between the two. Scratchpad clone deleted after use.
+
+- **FACT — the `× 75` projection is unchanged at production HEAD**
+  (`preopen_check.py:433` and `:475`), as is the `candle_time="09:15"` default
+  (`:450`) and the clock-time bar lookup (`:423`). The DIAG-VOLSHARE-0001
+  measurement therefore applies to the LIVE system, not merely to the frozen
+  clone.
+
+- **FACT — the entry-path thresholds are NOT the 1.0/1.2 in `synthesis.py`.**
+  Production HEAD refactored them into named constants (gap #91):
+  `VOL_GATE_CONDITIONAL = 1.0`, `VOL_GATE_BREAKOUT = 1.5`, `VOL_GATE_WAIT = 2.0`
+  (`preopen_check.py:46-57`), enforced at `:623`, `:666`, `:696`, `:811` and
+  printed by `report.py`. `synthesis.py`'s 1.0/1.2 is the LLM synthesis
+  discipline rule — a DIFFERENT layer. Any write-up must not conflate them.
+
+- **FACT — a SECOND projection with the identical defect.** The 9:45 path
+  projects the 30-minute bar by `× 12.5` (`preopen_check.py:523`, `:568`;
+  `observer.py:608`). Measured on the same 250-name / 6,686 up-session panel:
+  first-30-minute share = **13.20% median / 17.64% volume-weighted**, versus
+  the **8.00%** that `× 12.5` assumes — an overstatement of **1.65×–2.21×**.
+  Correct multiplier ≈ 5.7–7.6, not 12.5. `observer.py:493` already recorded
+  "Nothing has ever checked the projection"; this checks it.
+
+- **FACT — net effect on the live gates** (using s = 4.14% median / 5.82%
+  vol-weighted at 9:20, and s30 = 13.20% / 17.64% at 9:45). Figures are the
+  relative volume a name must ACTUALLY run at to pass:
+
+  | gate | nominal | 9:20 (×75) | 9:45 (×12.5) |
+  |---|---|---|---|
+  | CONDITIONAL | 1.0× | 0.23–0.32× | 0.45–0.61× |
+  | BREAKOUT | 1.5× | 0.34–0.48× | 0.68–0.91× |
+  | WAIT (gap-up) | 2.0× | 0.46–0.65× | 0.91–1.21× |
+
+  Every 9:20 gate, including the strictest, passes names running at HALF
+  normal volume or less. The 9:45 gates are materially closer to their
+  nominal intent.
+
+- **FACT — no zero-volume guard exists at production HEAD.** Grep for a
+  `vol == 0` / falsy-volume check in `preopen_check.py` returns nothing. So the
+  yfinance-fallback failure mode stands: yfinance reports ZERO volume for the
+  09:15–09:20 bar in 97.65% of sessions (measured, 14,197 sessions), giving
+  `volume_ratio = 0.0`, which fails every gate — an all-veto whenever the Kite
+  path is unavailable. **ASSUMPTION (unverified):** that the Kite path is
+  normally available, so this is latent rather than continuously active.
+  Verifying it needs the ledger's recorded `volume_ratio` values, which is a
+  separate read.
+
+- **SCOPE.** This entry records FACTS only. RULING 13d stands: no live
+  parameter may change before the 2026-09-27 AB_PREREG read date.

@@ -170,7 +170,9 @@ protocol.
   shadow-survivors only.
 - `research_register_v2.csv` (append-only): ~51 inherited legacy trials +
   Silver ML engine ESTIMATE ≥8 (Tier 3-adjacent; its forecasts must never
-  feed SPEC-AG-01).
+  feed SPEC-AG-01). **10 rows / cumulative trial count 53 as of 2026-07-22**
+  (51 inherited + `C1-52WH-0001` + `DIAG-VOLSHARE-0001`). Count the file, do
+  not trust this number.
 - `AB_PREREG.md`: four pre-registered legacy A/B analyses (recommended-leg
   NAV alpha vs TRI; overlay-alpha decision-time only; veto quality; reduce
   efficacy). READ DATE 2026-09-27. Peek-then-act = logged breach. A green
@@ -179,7 +181,16 @@ protocol.
 - `DECISIONS.md`: every ruling with FACT/ASSUMPTION tags — the audit trail.
   Live rulings: 1 rec_key · 2 Tier 1 look-don't-tune · 3 ingest scope · 4 SOP
   conventions · 5 cost stack · 6 freeze consumes no shadow slot · 7 inference
-  doctrine (below).
+  doctrine (below) · 8 unlogged rec = DEFAULT_EXECUTE · 9 clone-derived claims
+  about production require a HEAD check · 10 Tier 1 OHLC ingest quality gate ·
+  11 SPEC-SRA-01 killed · 12 SPEC-AG-01 demoted + MCX spike re-scoped ·
+  13 microstructure diagnostic door (opening-bar volume share).
+  Plus two non-ruling FACT entries headed **VERIFIED AT PRODUCTION HEAD**
+  (2026-07-20 vision fabrication; 2026-07-22 both volume projections).
+  **When citing a ruling, read `DECISIONS.md` — not this list.** It has run
+  three rulings stale twice now (caught 2026-07-22 both times — rulings 11/12
+  were listed here as PROPOSED for hours after adoption), which is TRAP 6
+  inside the file that documents TRAP 6.
 - **INFERENCE DOCTRINE (RULING 7, binding).** **Hansen SPA gates; Deflated
   Sharpe reports.** SPA bootstraps the actual return series and depends on no
   unmeasurable constant. DSR's `SR0 = trial_sr_std × m(N)` scales LINEARLY with
@@ -200,9 +211,12 @@ protocol.
   then the file carries a DRAFT banner and may be edited freely. After freeze,
   changes require a new versioned spec, never an edit — the SEAL_v2 pattern.
   Currently: `SPEC-52WH-01.md` (**FROZEN 2026-07-19**, sha256 `4b58f285…`,
-  register row `FREEZE-52WH-0001`); `SPEC-SRA-01.md` (**DRAFT 2026-07-20,
-  NOT binding, no hash, no register row, NO outcome contact authorized** —
-  short-horizon rally anticipation; see CURRENT STATE).
+  register row `FREEZE-52WH-0001`); `SPEC-SRA-01.md` (**DRAFT 2026-07-20 —
+  KILL PROPOSED, see RULING 11 draft**); `SPEC-QFM-01.md` and
+  `SPEC-PEAD-01.md` (**DRAFT 2026-07-21**). All three drafts: NOT binding, no
+  hash, no register row, **NO outcome contact authorized**. The QFM/PEAD drafts
+  carry ~20 numbered OPEN ITEMS between them — those are the freeze
+  precondition, not decoration.
   Enforced twice over: `.githooks/pre-commit`
   blocks post-freeze edits AND blocks rewriting/deleting a recorded hash (else
   a spec reopens by deleting its hash); `src/spec_guard.py` re-verifies at run
@@ -210,13 +224,18 @@ protocol.
 - `SOP_OF_RECORD.md`, `LEGACY_PIN.md`, `README_overlay.md`; repo-root
   `SETUP_OF_RECORD.md` = full inventory + open items.
 
-## CURRENT STATE (as of 2026-07-20)
+## CURRENT STATE (as of 2026-07-22. Verified that date: `overlay_log.csv` = 3
+## data rows; `research_register_v2.csv` = 10 rows, cumulative trial count 53;
+## rulings run through 13. Re-verify before citing — this section goes stale
+## faster than any other, and a stale line here reads exactly like a fresh one.)
 
 - Paper leg 25/25 settled: **ENTERED (gate-respecting headline) 11 recs =
   −1.32R**; ASSUMED_ENTRY 14 recs = +6.50R (tradeability audit: 12/14
   in-zone but volume-trigger unconfirmed, 2/14 gap-away; no demotion).
   Rec universe 18/18 settled. NAV: 15 daily marks, −0.70% since 2026-06-29.
-- **Overlay log: ROOT-CAUSED AND UNBLOCKED 2026-07-20, still 0 data rows.**
+- **Overlay log: ROOT-CAUSED AND UNBLOCKED 2026-07-20; 3 data rows as of
+  2026-07-22** (logging began 2026-07-20 — verify with
+  `tail -n +2 governance/overlay_log.csv | wc -l`, do not trust this count).
   The cause of 21 empty days was not operator neglect — **the `overlay`
   command did not exist.** `scripts/overlay.sh` was never sourced and
   `~/.zshrc` did not exist at all; the setup step in `README_overlay.md` was
@@ -242,6 +261,39 @@ protocol.
   unrecoverable Tier 1 data. Guard added: `overlay_queue.ingest_health()`
   reads the launchd exit code and the newest NON-EMPTY snapshot directly
   (weekday-aware), surfaced at the top of `overlay_today`.
+- **LEGACY VOLUME GATES ARE MISCALIBRATED — measured 2026-07-22 (RULING 13,
+  register `DIAG-VOLSHARE-0001` / `-0002-REFINE`; ONE trial spent, cumulative
+  53).** The entry path projects a partial bar to a full day assuming UNIFORM
+  intraday volume: `vol * 75 / avg20` for the 9:15–9:20 bar
+  (`preopen_check.py:433`, `:475`) and `vol * 12.5 / avg20` for the 30-minute
+  bar (`:523`, `:568`). NSE volume is front-loaded, so both overstate.
+  **Measured: first-5-min share s ≈ 4.0% (median) vs the 1.33% `×75` implies →
+  correct multiplier ≈ 25, overstatement ≈ 2.95×; first-30-min share ≈ 13.2%
+  vs the 8.0% `×12.5` implies → ≈ 1.65×.** FOUR independent routes converge on
+  s (4.14% yfinance residual n=6,572 · 4.07% yfinance direct n=333 · ~4.05%
+  Kite ratio-inference · 3.94% Kite exact reconstruction n=22), two from
+  yfinance intraday and two from production's own Kite data.
+  **VERIFIED LIVE at production HEAD `5c099d77` (≠ pinned clone `ee7ad132`)** —
+  see the 2026-07-22 VERIFIED AT PRODUCTION HEAD entry in `DECISIONS.md`.
+  Real entry-path thresholds are `VOL_GATE_CONDITIONAL/BREAKOUT/WAIT` =
+  1.0/1.5/2.0 (`preopen_check.py:46-57`), **NOT** the 1.0/1.2 in
+  `synthesis.py` — that is the LLM synthesis discipline layer; never conflate
+  them. Nominal 1.0/1.5/2.0 really demand **0.34×/0.51×/0.68×** of the 20-day
+  average. The gates BIND (they reject 13.6%/27.3%/36.4% of recs) — they are
+  **MISLABELLED, not inert**; an earlier "near-vacuous" reading was corrected.
+  **The fix is the DENOMINATOR, not the constant:** per-stock s spans ~10×
+  (1.14% NAUKRI → 10.51% KALYANKJIL), so `75 → 25` relocates the error rather
+  than removing it. Compare the opening bar to the 20-day average of that
+  symbol's OWN opening bar and s cancels algebraically. **RULING 13d BINDS: no
+  live parameter change before the 2026-09-27 read date** — changing the
+  recommendation rule mid-window corrupts the AB_PREREG instrument. Shippable
+  now (instrumentation only, zero decision change): the prompt in
+  `analysis/prod_prompt_volume_instrumentation.md`. Related LATENT defect
+  (not active): `preopen_check.py:613`/`:769` do `volume_ratio or 0.0`, so an
+  UNKNOWN ratio becomes a hard gate failure; on yfinance data the 09:15 bar
+  reports zero volume in 97.65% of sessions, which would all-veto. Confirmed
+  NOT firing live — 0 of 22 rec-days show `0.0` or `None`, i.e. the Kite path
+  is holding.
 - Advancing Tier 2 candidates: SPEC-QFM-01 (fundamental deltas, shadow slot
   1), SPEC-PEAD-01 (earnings drift, slot 2 — its CAR study is its one Tier 2
   trial, only after spec hash-freeze), SPEC-AG-01 (MCX Silver carry, queued
@@ -391,12 +443,16 @@ protocol.
    liability at due diligence.
 5. **A withdrawn result is still a spent trial.** C1-52WH-0001 is not
    reclaimable. The register is append-only — corrections are new rows.
-6. **This program's characteristic failure is SILENCE, not error.** Four
+6. **This program's characteristic failure is SILENCE, not error.** Six
    instances now, each of which looked exactly like "nothing to report":
    `ranked 0` printed three times in C1-52WH-0001; the `overlay` command that
    did not exist for 21 days; the ingest that exited 23 for three days into
-   correctly-named EMPTY directories; and 50,505 blank-symbol PIT rows that a
-   `groupby` silently dropped, narrowing the habitat ~10%. External sources
+   correctly-named EMPTY directories; 50,505 blank-symbol PIT rows that a
+   `groupby` silently dropped, narrowing the habitat ~10%; a volume gate
+   mislabelled by ~3× that has been shipping plausible verdicts for the
+   system's entire life, which production's own comments twice recorded as
+   "nothing has ever checked the projection"; and `volume_ratio or 0.0`
+   turning UNKNOWN into a hard veto with no log line. External sources
    share the shape — BSE returns `[]` without an `Origin` header, NSE
    silently truncates a >2-year window, MCX serves partial session bars with
    a healthy-looking settle, and a soft-404 returns HTTP 200 with identical
@@ -410,6 +466,31 @@ protocol.
    and the cost was 21 unrecoverable days of the single most time-sensitive
    measurement in the program. Prefer a check that FAILS LOUDLY over an
    instruction that can be silently skipped.
+8. **A volume-weighted mean is an outlier amplifier — and it nearly inverted a
+   verdict.** In DIAG-VOLSHARE-0001 the closing-auction tail was first
+   estimated by volume-weighted mean = 4.22%; the MEDIAN was 0.02%. A handful
+   of sessions (max 27%) carried it. Subtracting that phantom collapsed the
+   measured share to 1.62% — spuriously close to the 1/75 = 1.33% under test,
+   i.e. it would have read as **"correctly calibrated, hypothesis rejected"**.
+   The tell was a companion number that was merely implausible, not wrong:
+   the same subset implied a first-5-min share of 17.24%. Caught, estimator
+   switched to the median, conclusion reversed back. **Rules: (a) when an
+   operator specifies a weighted estimator, compute the robust one ALONGSIDE
+   it and reconcile — do not simply comply; (b) treat a result that lands
+   suspiciously near the null as a prompt to audit the estimator, not as
+   confirmation; (c) at small n a volume-weighted figure is not a headline —
+   the 22-rec-day reconstruction gave median 3.94% vs volume-weighted 8.64%,
+   the latter driven by ONE news-day observation.**
+9. **Read the constant where it is ENFORCED, not where it is described.** The
+   volume thresholds were read from `synthesis.py` (1.0/1.2) and reported as
+   the gate. The live entry path actually enforces `VOL_GATE_CONDITIONAL/
+   BREAKOUT/WAIT` = 1.0/1.5/2.0 in `preopen_check.py`, refactored into named
+   constants at a production HEAD the frozen clone predates — and a SECOND
+   projection (`×12.5`, 30-min bar) existed that the first pass missed
+   entirely. Production's own comment records the same class of error
+   (report.py promised owners a "1.5× over 30 minutes" condition **no code
+   path ever evaluated**). Corollary to RULING 9: a HEAD check is not a
+   formality — here the HEADS DIFFERED and the diff carried the real answer.
 
 ## ROADMAP (the path to the fund)
 
@@ -471,8 +552,18 @@ another selection engine.
 
 `.venv`: python 3.14, pandas 3.0.3, pytest 9.1.1, pyarrow 25.0.0,
 yfinance 1.5.1 (+ openpyxl, pypdf for A1 corpus parsing). Tests:
-`.venv/bin/python -m pytest tests/ -q` (233 passing as of 2026-07-20).
+`.venv/bin/python -m pytest tests/ -q` (**248 passing as of 2026-07-22**).
 Data dirs (`data/sealed/`, `data/legacy_snapshot/`, `data/market/`,
 `data/derived/`, `data/reference/`, plus the bulk 52WH panel artifacts
 under `data/workspace/`) are gitignored — never push data. Remote:
 https://github.com/ujjwal-k17/algo_trading.
+
+**`data/workspace/` IS GATED — pre-cutoff rows ONLY.**
+`tests/test_isolation.py::test_workspace_has_zero_post_cutoff_rows` walks every
+parquet there and fails on any date ≥ the seal cutoff. Post-cutoff Tier 1
+artifacts belong under `data/derived/` instead. Learned the hard way on
+2026-07-22: the RULING 13 volume caches were written to `data/workspace/` and
+broke the suite; the fix was to MOVE THE DATA
+(→ `data/derived/volume_share_diag/`), never to relax the assertion. **If a new
+artifact trips a governance guard, the artifact is in the wrong place — the
+guard is the asset.**
