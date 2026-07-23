@@ -1,0 +1,128 @@
+symbol,sector,crude_sign,fx_sign,channel
+AARTIIND,Specialty chemicals,AMB,AMB,"Benzene/toluene/naphtha derivatives are the feedstock (crude-negative) but most contracts are cost-plus with fast pass-through and a large export book (FX-positive), so neither sign is defensible ex ante. DELIBERATELY UNSCORED - the alternative is an unfalsifiable map in which every chemical name confirms the theory."
+ACC,Cement,NEG,NA,Pet coke is a refinery product and diesel freight is a large cost line; power+fuel+freight is ~50% of cost. Moderate.
+ADANIGREEN,Adani group,AMB,AMB,"USD debt argues FX-negative, but the Jan-2023 Hindenburg episode dominates this group's return variance in the window and is unrelated to macro betas. Reported, not scored."
+ADANIPORTS,Adani group,AMB,AMB,"USD debt argues FX-negative, but the Jan-2023 Hindenburg episode dominates this group's return variance in the window and is unrelated to macro betas. Reported, not scored."
+ADANITRANS,Adani group,AMB,AMB,"USD debt argues FX-negative, but the Jan-2023 Hindenburg episode dominates this group's return variance in the window and is unrelated to macro betas. Reported, not scored."
+AKZOINDIA,Paints,NEG,NEG,"~50%+ of the RM basket is crude-derived (monomers, solvents, resins) plus imported TiO2 priced in USD; domestic pricing with lagged pass-through."
+ALKEM,Pharma exporters,NA,POS,"Large US/EU generic and CRAMS revenue in USD. WEAKER than IT: KSM/API inputs are imported from China in USD and several carry USD acquisition debt, both offsetting."
+AMBER,Consumer durables / EMS,NA,NEG,"Components, compressors and finished-goods sourcing from China/ASEAN invoiced in USD; sales entirely domestic in INR."
+AMBUJACEM,Cement,NEG,NA,Pet coke is a refinery product and diesel freight is a large cost line; power+fuel+freight is ~50% of cost. Moderate.
+APOLLOTYRE,Tyres (domestic-skewed),NEG,NEG,Carbon black and synthetic rubber are crude derivatives; natural rubber and CB feedstock are imported in USD. Domestic replacement/OEM pricing.
+ARVIND,Textile exporters,NA,POS,Home-textile and yarn/garment export revenue in USD against INR cotton and INR labour.
+ASIANPAINT,Paints,NEG,NEG,"~50%+ of the RM basket is crude-derived (monomers, solvents, resins) plus imported TiO2 priced in USD; domestic pricing with lagged pass-through."
+ASTRAL,Plastics / packaging / pipes,NEG,NA,"PVC, PP, PE, BOPET/BOPP resin are direct crude/naphtha derivatives - the highest input-cost share in the map. FX left NA except POLYPLEX (below)."
+ATUL,Specialty chemicals,AMB,AMB,"Benzene/toluene/naphtha derivatives are the feedstock (crude-negative) but most contracts are cost-plus with fast pass-through and a large export book (FX-positive), so neither sign is defensible ex ante. DELIBERATELY UNSCORED - the alternative is an unfalsifiable map in which every chemical name confirms the theory."
+AUROPHARMA,Pharma exporters,NA,POS,"Large US/EU generic and CRAMS revenue in USD. WEAKER than IT: KSM/API inputs are imported from China in USD and several carry USD acquisition debt, both offsetting."
+BAJAJ-AUTO,Autos (export-skewed),NEG,POS,"Same domestic running-cost drag, but ~40% of volume is exported (Africa/LatAm) in USD, so FX sign is positive. Discriminating test versus HEROMOTOCO."
+BAJAJELEC,Consumer durables / EMS,NA,NEG,"Components, compressors and finished-goods sourcing from China/ASEAN invoiced in USD; sales entirely domestic in INR."
+BALKRISIND,Tyres (export-skewed),NEG,POS,"Same crude-derived input cost, but ~70%+ of revenue is off-highway export in EUR/USD, so the FX sign FLIPS versus the domestic tyre makers. Deliberate discriminating test."
+BERGEPAINT,Paints,NEG,NEG,"~50%+ of the RM basket is crude-derived (monomers, solvents, resins) plus imported TiO2 priced in USD; domestic pricing with lagged pass-through."
+BHARTIARTL,Telecom,NA,NEG,Large USD-denominated debt and USD-priced network equipment against INR revenue; MTM on the debt hits reported earnings directly.
+BIOCON,Pharma exporters,NA,POS,"Large US/EU generic and CRAMS revenue in USD. WEAKER than IT: KSM/API inputs are imported from China in USD and several carry USD acquisition debt, both offsetting."
+BLUESTARCO,Consumer durables / EMS,NA,NEG,"Components, compressors and finished-goods sourcing from China/ASEAN invoiced in USD; sales entirely domestic in INR."
+BPCL,Oil marketing companies,NEG,NEG,"POLICY BETA, NOT A PURE INPUT-COST BETA. Crude bought in USD; retail pricing was administered/politically frozen for material parts of the window (2017-18, 2021-22), so marketing margin compresses when crude rises. Under true daily pricing the sign would be neutral-to-positive (inventory gains). PRE-STATED RISK: expect sub-period sign instability."
+CASTROLIND,Lubricants,NEG,NEG,Base oil is a refinery cut (crude derivative) and largely imported in USD.
+CEATLTD,Tyres (domestic-skewed),NEG,NEG,Carbon black and synthetic rubber are crude derivatives; natural rubber and CB feedstock are imported in USD. Domestic replacement/OEM pricing.
+CHENNPETRO,Standalone refining,POS,AMB,GRM + crude-inventory gains rise with crude; USD crude purchase vs USD-linked product realisation roughly offsets on FX.
+CIPLA,Pharma exporters,NA,POS,"Large US/EU generic and CRAMS revenue in USD. WEAKER than IT: KSM/API inputs are imported from China in USD and several carry USD acquisition debt, both offsetting."
+COALINDIA,Thermal coal,POS,AMB,Energy substitution: seaborne thermal coal co-moves with crude; domestic notified pricing damps it. Weak prediction.
+COFORGE,IT services,NA,POS,"70-90% USD/EUR/GBP revenue against an almost entirely INR cost base - the single strongest a-priori claim in this study. If IT does not load positively on USDINR, the METHOD is suspect, not the economics."
+COLPAL,FMCG,NEG,NA,"LAB (linear alkyl benzene), HDPE/PET packaging and some palm-substitute inputs are crude-linked. Weak."
+COSMOFIRST,Plastics / packaging / pipes,NEG,NA,"PVC, PP, PE, BOPET/BOPP resin are direct crude/naphtha derivatives - the highest input-cost share in the map. FX left NA except POLYPLEX (below)."
+CROMPTON,Consumer durables / EMS,NA,NEG,"Components, compressors and finished-goods sourcing from China/ASEAN invoiced in USD; sales entirely domestic in INR."
+DABUR,FMCG,NEG,NA,"LAB (linear alkyl benzene), HDPE/PET packaging and some palm-substitute inputs are crude-linked. Weak."
+DALBHARAT,Cement,NEG,NA,Pet coke is a refinery product and diesel freight is a large cost line; power+fuel+freight is ~50% of cost. Moderate.
+DEEPAKNTR,Specialty chemicals,AMB,AMB,"Benzene/toluene/naphtha derivatives are the feedstock (crude-negative) but most contracts are cost-plus with fast pass-through and a large export book (FX-positive), so neither sign is defensible ex ante. DELIBERATELY UNSCORED - the alternative is an unfalsifiable map in which every chemical name confirms the theory."
+DIVISLAB,Pharma exporters,NA,POS,"Large US/EU generic and CRAMS revenue in USD. WEAKER than IT: KSM/API inputs are imported from China in USD and several carry USD acquisition debt, both offsetting."
+DIXON,Consumer durables / EMS,NA,NEG,"Components, compressors and finished-goods sourcing from China/ASEAN invoiced in USD; sales entirely domestic in INR."
+DRREDDY,Pharma exporters,NA,POS,"Large US/EU generic and CRAMS revenue in USD. WEAKER than IT: KSM/API inputs are imported from China in USD and several carry USD acquisition debt, both offsetting."
+EICHERMOT,Autos (domestic demand),NEG,NA,Retail fuel cost is a direct running-cost drag on 2W and entry-car demand. Weak.
+FLUOROCHEM,Specialty chemicals,AMB,AMB,"Benzene/toluene/naphtha derivatives are the feedstock (crude-negative) but most contracts are cost-plus with fast pass-through and a large export book (FX-positive), so neither sign is defensible ex ante. DELIBERATELY UNSCORED - the alternative is an unfalsifiable map in which every chemical name confirms the theory."
+GESHIP,Shipping,AMB,AMB,"Bunker fuel is a crude-derived cost, but tanker charter rates often RISE with oil dislocation; freight is USD-earned against USD debt."
+GLENMARK,Pharma exporters,NA,POS,"Large US/EU generic and CRAMS revenue in USD. WEAKER than IT: KSM/API inputs are imported from China in USD and several carry USD acquisition debt, both offsetting."
+GODREJCP,FMCG,NEG,NA,"LAB (linear alkyl benzene), HDPE/PET packaging and some palm-substitute inputs are crude-linked. Weak."
+GRANULES,Pharma exporters,NA,POS,"Large US/EU generic and CRAMS revenue in USD. WEAKER than IT: KSM/API inputs are imported from China in USD and several carry USD acquisition debt, both offsetting."
+GRASIM,VSF / diversified,AMB,NA,"Energy and caustic costs argue crude-negative; VSF competes with crude-derived polyester, so higher crude can help pricing."
+GUJGASLTD,City gas / LNG,NEG,NEG,"Gas sourced on crude-linked LNG contracts and APM formula, priced in USD; regulated/competitive retail pricing with lagged pass-through."
+GULFOILLUB,Lubricants,NEG,NEG,Base oil is a refinery cut (crude derivative) and largely imported in USD.
+HAVELLS,Consumer durables / EMS,NA,NEG,"Components, compressors and finished-goods sourcing from China/ASEAN invoiced in USD; sales entirely domestic in INR."
+HCLTECH,IT services,NA,POS,"70-90% USD/EUR/GBP revenue against an almost entirely INR cost base - the single strongest a-priori claim in this study. If IT does not load positively on USDINR, the METHOD is suspect, not the economics."
+HEROMOTOCO,Autos (domestic demand),NEG,NA,Retail fuel cost is a direct running-cost drag on 2W and entry-car demand. Weak.
+HINDALCO,Metals - large USD debt,AMB,AMB,"USD-linked realisation argues FX-positive; large USD debt stacks (Novelis, Corus/TSE) argue FX-negative. Net sign is not determinable a priori."
+HINDPETRO,Oil marketing companies,NEG,NEG,"POLICY BETA, NOT A PURE INPUT-COST BETA. Crude bought in USD; retail pricing was administered/politically frozen for material parts of the window (2017-18, 2021-22), so marketing margin compresses when crude rises. Under true daily pricing the sign would be neutral-to-positive (inventory gains). PRE-STATED RISK: expect sub-period sign instability."
+HINDUNILVR,FMCG,NEG,NA,"LAB (linear alkyl benzene), HDPE/PET packaging and some palm-substitute inputs are crude-linked. Weak."
+HINDZINC,"Metals - net exporters, low USD debt",NA,POS,"LME/global reference prices are set in USD, so INR realisation rises mechanically with depreciation, and these three carry little USD debt to offset it."
+IDEA,Telecom,NA,NEG,Large USD-denominated debt and USD-priced network equipment against INR revenue; MTM on the debt hits reported earnings directly.
+IGL,City gas / LNG,NEG,NEG,"Gas sourced on crude-linked LNG contracts and APM formula, priced in USD; regulated/competitive retail pricing with lagged pass-through."
+INDIGO,Aviation,NEG,NEG,ATF is 30-40% of opex and is priced off crude in USD; USD operating-lease and maintenance liabilities. Expected negative on BOTH factors - the sharpest joint call in the map.
+INFY,IT services,NA,POS,"70-90% USD/EUR/GBP revenue against an almost entirely INR cost base - the single strongest a-priori claim in this study. If IT does not load positively on USDINR, the METHOD is suspect, not the economics."
+IOC,Oil marketing companies,NEG,NEG,"POLICY BETA, NOT A PURE INPUT-COST BETA. Crude bought in USD; retail pricing was administered/politically frozen for material parts of the window (2017-18, 2021-22), so marketing margin compresses when crude rises. Under true daily pricing the sign would be neutral-to-positive (inventory gains). PRE-STATED RISK: expect sub-period sign instability."
+IPCALAB,Pharma exporters,NA,POS,"Large US/EU generic and CRAMS revenue in USD. WEAKER than IT: KSM/API inputs are imported from China in USD and several carry USD acquisition debt, both offsetting."
+JETAIRWAYS,Aviation,NEG,NEG,ATF is 30-40% of opex and is priced off crude in USD; USD operating-lease and maintenance liabilities. Expected negative on BOTH factors - the sharpest joint call in the map.
+JINDALPOLY,Plastics / packaging / pipes,NEG,NA,"PVC, PP, PE, BOPET/BOPP resin are direct crude/naphtha derivatives - the highest input-cost share in the map. FX left NA except POLYPLEX (below)."
+JKCEMENT,Cement,NEG,NA,Pet coke is a refinery product and diesel freight is a large cost line; power+fuel+freight is ~50% of cost. Moderate.
+JKTYRE,Tyres (domestic-skewed),NEG,NEG,Carbon black and synthetic rubber are crude derivatives; natural rubber and CB feedstock are imported in USD. Domestic replacement/OEM pricing.
+JSWSTEEL,Metals - large USD debt,AMB,AMB,"USD-linked realisation argues FX-positive; large USD debt stacks (Novelis, Corus/TSE) argue FX-negative. Net sign is not determinable a priori."
+JUBLPHARMA,Pharma exporters,NA,POS,"Large US/EU generic and CRAMS revenue in USD. WEAKER than IT: KSM/API inputs are imported from China in USD and several carry USD acquisition debt, both offsetting."
+KALYANKJIL,Jewellery,NA,AMB,Higher INR gold lifts inventory value and ticket size but suppresses volume; the two effects have opposite signs and different lags.
+KANSAINER,Paints,NEG,NEG,"~50%+ of the RM basket is crude-derived (monomers, solvents, resins) plus imported TiO2 priced in USD; domestic pricing with lagged pass-through."
+KEI,Wires & cables,NA,NEG,Copper and aluminium are LME-priced in USD; domestic INR sales with lagged pass-through.
+KPRMILL,Textile exporters,NA,POS,Home-textile and yarn/garment export revenue in USD against INR cotton and INR labour.
+LAURUSLABS,Pharma exporters,NA,POS,"Large US/EU generic and CRAMS revenue in USD. WEAKER than IT: KSM/API inputs are imported from China in USD and several carry USD acquisition debt, both offsetting."
+LTIM,IT services,NA,POS,"70-90% USD/EUR/GBP revenue against an almost entirely INR cost base - the single strongest a-priori claim in this study. If IT does not load positively on USDINR, the METHOD is suspect, not the economics."
+LUPIN,Pharma exporters,NA,POS,"Large US/EU generic and CRAMS revenue in USD. WEAKER than IT: KSM/API inputs are imported from China in USD and several carry USD acquisition debt, both offsetting."
+MANAPPURAM,Gold-loan NBFC,NA,POS,"Collateral is gold, priced in USD internationally; INR gold rises with depreciation, improving LTV headroom and disbursement value. Weak."
+MARICO,FMCG,NEG,NA,"LAB (linear alkyl benzene), HDPE/PET packaging and some palm-substitute inputs are crude-linked. Weak."
+MARUTI,Autos (domestic demand),NEG,NA,Retail fuel cost is a direct running-cost drag on 2W and entry-car demand. Weak.
+MGL,City gas / LNG,NEG,NEG,"Gas sourced on crude-linked LNG contracts and APM formula, priced in USD; regulated/competitive retail pricing with lagged pass-through."
+MPHASIS,IT services,NA,POS,"70-90% USD/EUR/GBP revenue against an almost entirely INR cost base - the single strongest a-priori claim in this study. If IT does not load positively on USDINR, the METHOD is suspect, not the economics."
+MRF,Tyres (domestic-skewed),NEG,NEG,Carbon black and synthetic rubber are crude derivatives; natural rubber and CB feedstock are imported in USD. Domestic replacement/OEM pricing.
+MRPL,Standalone refining,POS,AMB,GRM + crude-inventory gains rise with crude; USD crude purchase vs USD-linked product realisation roughly offsets on FX.
+MUTHOOTFIN,Gold-loan NBFC,NA,POS,"Collateral is gold, priced in USD internationally; INR gold rises with depreciation, improving LTV headroom and disbursement value. Weak."
+NATCOPHARM,Pharma exporters,NA,POS,"Large US/EU generic and CRAMS revenue in USD. WEAKER than IT: KSM/API inputs are imported from China in USD and several carry USD acquisition debt, both offsetting."
+NATIONALUM,"Metals - net exporters, low USD debt",NA,POS,"LME/global reference prices are set in USD, so INR realisation rises mechanically with depreciation, and these three carry little USD debt to offset it."
+NAVINFLUOR,Specialty chemicals,AMB,AMB,"Benzene/toluene/naphtha derivatives are the feedstock (crude-negative) but most contracts are cost-plus with fast pass-through and a large export book (FX-positive), so neither sign is defensible ex ante. DELIBERATELY UNSCORED - the alternative is an unfalsifiable map in which every chemical name confirms the theory."
+NILKAMAL,Plastics / packaging / pipes,NEG,NA,"PVC, PP, PE, BOPET/BOPP resin are direct crude/naphtha derivatives - the highest input-cost share in the map. FX left NA except POLYPLEX (below)."
+NMDC,"Metals - net exporters, low USD debt",NA,POS,"LME/global reference prices are set in USD, so INR realisation rises mechanically with depreciation, and these three carry little USD debt to offset it."
+NOCIL,Specialty chemicals,AMB,AMB,"Benzene/toluene/naphtha derivatives are the feedstock (crude-negative) but most contracts are cost-plus with fast pass-through and a large export book (FX-positive), so neither sign is defensible ex ante. DELIBERATELY UNSCORED - the alternative is an unfalsifiable map in which every chemical name confirms the theory."
+OIL,Upstream E&P,POS,POS,"Realisation is the crude price itself; sold in USD. CAVEAT: subsidy-sharing (pre-2015) and the 2022 windfall levy cap the upside, so this is partly a policy beta."
+ONGC,Upstream E&P,POS,POS,"Realisation is the crude price itself; sold in USD. CAVEAT: subsidy-sharing (pre-2015) and the 2022 windfall levy cap the upside, so this is partly a policy beta."
+ORIENTELEC,Consumer durables / EMS,NA,NEG,"Components, compressors and finished-goods sourcing from China/ASEAN invoiced in USD; sales entirely domestic in INR."
+PERSISTENT,IT services,NA,POS,"70-90% USD/EUR/GBP revenue against an almost entirely INR cost base - the single strongest a-priori claim in this study. If IT does not load positively on USDINR, the METHOD is suspect, not the economics."
+PETRONET,City gas / LNG,NEG,NEG,"Gas sourced on crude-linked LNG contracts and APM formula, priced in USD; regulated/competitive retail pricing with lagged pass-through."
+PIDILITIND,Adhesives,NEG,NEG,VAM (vinyl acetate monomer) is crude/gas-linked and imported.
+PIIND,Specialty chemicals,AMB,AMB,"Benzene/toluene/naphtha derivatives are the feedstock (crude-negative) but most contracts are cost-plus with fast pass-through and a large export book (FX-positive), so neither sign is defensible ex ante. DELIBERATELY UNSCORED - the alternative is an unfalsifiable map in which every chemical name confirms the theory."
+POLYCAB,Wires & cables,NA,NEG,Copper and aluminium are LME-priced in USD; domestic INR sales with lagged pass-through.
+POLYPLEX,Packaging films - overseas ops,NEG,POS,"Crude-derived PET chip input (NEG on crude) but a majority of capacity and revenue sits in overseas subsidiaries, so translated earnings rise with depreciation."
+RAJESHEXPO,Jewellery,NA,AMB,Higher INR gold lifts inventory value and ticket size but suppresses volume; the two effects have opposite signs and different lags.
+RAMCOCEM,Cement,NEG,NA,Pet coke is a refinery product and diesel freight is a large cost line; power+fuel+freight is ~50% of cost. Moderate.
+RELIANCE,Conglomerate - refining+petchem+retail+telecom,AMB,AMB,"PRE-STATED SIGN-CHANGER. Refining/petchem argues crude-positive; the Jio (2016+) and Retail build-out progressively dilutes energy in the mix, and O2C is a crude BUYER. Net exposure plausibly changes sign within the window, so no directional prediction is offered."
+SCI,Shipping,AMB,AMB,"Bunker fuel is a crude-derived cost, but tanker charter rates often RISE with oil dislocation; freight is USD-earned against USD debt."
+SHREECEM,Cement,NEG,NA,Pet coke is a refinery product and diesel freight is a large cost line; power+fuel+freight is ~50% of cost. Moderate.
+SRF,Specialty chemicals,AMB,AMB,"Benzene/toluene/naphtha derivatives are the feedstock (crude-negative) but most contracts are cost-plus with fast pass-through and a large export book (FX-positive), so neither sign is defensible ex ante. DELIBERATELY UNSCORED - the alternative is an unfalsifiable map in which every chemical name confirms the theory."
+SUNPHARMA,Pharma exporters,NA,POS,"Large US/EU generic and CRAMS revenue in USD. WEAKER than IT: KSM/API inputs are imported from China in USD and several carry USD acquisition debt, both offsetting."
+SUPREMEIND,Plastics / packaging / pipes,NEG,NA,"PVC, PP, PE, BOPET/BOPP resin are direct crude/naphtha derivatives - the highest input-cost share in the map. FX left NA except POLYPLEX (below)."
+SYMPHONY,Consumer durables / EMS,NA,NEG,"Components, compressors and finished-goods sourcing from China/ASEAN invoiced in USD; sales entirely domestic in INR."
+SYNGENE,Pharma exporters,NA,POS,"Large US/EU generic and CRAMS revenue in USD. WEAKER than IT: KSM/API inputs are imported from China in USD and several carry USD acquisition debt, both offsetting."
+TATACHEM,Specialty chemicals,AMB,AMB,"Benzene/toluene/naphtha derivatives are the feedstock (crude-negative) but most contracts are cost-plus with fast pass-through and a large export book (FX-positive), so neither sign is defensible ex ante. DELIBERATELY UNSCORED - the alternative is an unfalsifiable map in which every chemical name confirms the theory."
+TATAPOWER,Power - imported coal,AMB,NEG,Mundra runs on imported coal invoiced in USD plus USD debt (FX NEG). Crude sign is AMB because the Indonesian coal-mine stake is a natural hedge on the commodity leg.
+TATASTEEL,Metals - large USD debt,AMB,AMB,"USD-linked realisation argues FX-positive; large USD debt stacks (Novelis, Corus/TSE) argue FX-negative. Net sign is not determinable a priori."
+TCS,IT services,NA,POS,"70-90% USD/EUR/GBP revenue against an almost entirely INR cost base - the single strongest a-priori claim in this study. If IT does not load positively on USDINR, the METHOD is suspect, not the economics."
+TECHM,IT services,NA,POS,"70-90% USD/EUR/GBP revenue against an almost entirely INR cost base - the single strongest a-priori claim in this study. If IT does not load positively on USDINR, the METHOD is suspect, not the economics."
+TIMETECHNO,Plastics / packaging / pipes,NEG,NA,"PVC, PP, PE, BOPET/BOPP resin are direct crude/naphtha derivatives - the highest input-cost share in the map. FX left NA except POLYPLEX (below)."
+TITAN,Jewellery,NA,AMB,Higher INR gold lifts inventory value and ticket size but suppresses volume; the two effects have opposite signs and different lags.
+TORNTPHARM,Pharma exporters,NA,POS,"Large US/EU generic and CRAMS revenue in USD. WEAKER than IT: KSM/API inputs are imported from China in USD and several carry USD acquisition debt, both offsetting."
+TRIDENT,Textile exporters,NA,POS,Home-textile and yarn/garment export revenue in USD against INR cotton and INR labour.
+TVSMOTOR,Autos (domestic demand),NEG,NA,Retail fuel cost is a direct running-cost drag on 2W and entry-car demand. Weak.
+UFLEX,Plastics / packaging / pipes,NEG,NA,"PVC, PP, PE, BOPET/BOPP resin are direct crude/naphtha derivatives - the highest input-cost share in the map. FX left NA except POLYPLEX (below)."
+ULTRACEMCO,Cement,NEG,NA,Pet coke is a refinery product and diesel freight is a large cost line; power+fuel+freight is ~50% of cost. Moderate.
+VEDL,Metals - large USD debt,AMB,AMB,"USD-linked realisation argues FX-positive; large USD debt stacks (Novelis, Corus/TSE) argue FX-negative. Net sign is not determinable a priori."
+VINATIORGA,Specialty chemicals,AMB,AMB,"Benzene/toluene/naphtha derivatives are the feedstock (crude-negative) but most contracts are cost-plus with fast pass-through and a large export book (FX-positive), so neither sign is defensible ex ante. DELIBERATELY UNSCORED - the alternative is an unfalsifiable map in which every chemical name confirms the theory."
+VIPIND,Plastics / packaging / pipes,NEG,NA,"PVC, PP, PE, BOPET/BOPP resin are direct crude/naphtha derivatives - the highest input-cost share in the map. FX left NA except POLYPLEX (below)."
+VOLTAS,Consumer durables / EMS,NA,NEG,"Components, compressors and finished-goods sourcing from China/ASEAN invoiced in USD; sales entirely domestic in INR."
+VTL,Textile exporters,NA,POS,Home-textile and yarn/garment export revenue in USD against INR cotton and INR labour.
+WELSPUNIND,Textile exporters,NA,POS,Home-textile and yarn/garment export revenue in USD against INR cotton and INR labour.
+WHIRLPOOL,Consumer durables / EMS,NA,NEG,"Components, compressors and finished-goods sourcing from China/ASEAN invoiced in USD; sales entirely domestic in INR."
+WIPRO,IT services,NA,POS,"70-90% USD/EUR/GBP revenue against an almost entirely INR cost base - the single strongest a-priori claim in this study. If IT does not load positively on USDINR, the METHOD is suspect, not the economics."
+ZYDUSLIFE,Pharma exporters,NA,POS,"Large US/EU generic and CRAMS revenue in USD. WEAKER than IT: KSM/API inputs are imported from China in USD and several carry USD acquisition debt, both offsetting."

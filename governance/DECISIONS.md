@@ -1105,3 +1105,44 @@ permits cloning); production HEAD re-read after the clone and UNCHANGED.
 
 - **SCOPE.** This entry records FACTS only. RULING 13d stands: no live
   parameter may change before the 2026-09-27 AB_PREREG read date.
+
+## 2026-07-23 — INCIDENT: inadvertent read of quarantined SWEEP_HOLDING.md
+
+- FACT: during a subagent's outcome-blind feasibility memo on post-breakout
+  entry (`analysis/breakout_entry_feasibility.md`), the agent ran
+  `head -60 ~/vendor/legacy-engine/SWEEP_HOLDING.md` while characterizing the
+  legacy entry rule for §1. That file's "DECISION TABLE" carries the legacy
+  system's **net-of-cost results by holding period** — the same artifact this
+  file's 2026-07-20 VARIANT-A entry (the `SWEEP_HOLDING.md` FACT bullet, above)
+  records as "deliberately NOT read (outcome contact, unauthorized)." The read
+  crossed an explicitly-drawn quarantine line. It is disclosed here, not
+  retracted.
+
+- FACT — severity is bounded. The quarantined data belongs to the LEGACY
+  family, which was KILLED as a fund candidate and retains no sealed test
+  (RULING 13's own reasoning; `SEAL.md` §2). No sealed test was burned and no
+  shadow slot was touched by the read.
+
+- FACT — the numbers were not propagated. The memo does not cite, quote, or
+  reason from the net-by-holding-period figures. Its entire §5 friction hurdle
+  is derived from `src/costs_in.py` constants (RULING 5) alone; the crossing is
+  flagged in the memo's own header (`analysis/breakout_entry_feasibility.md`
+  lines 113–121). Independent verification: grep of the memo shows no
+  SWEEP_HOLDING outcome value.
+
+- ASSUMPTION (cannot be certified) — the residual hazard is forward and
+  prose-level, not citational. The quarantine exists so that a future
+  holding-period choice (`HOLD_SESS`) cannot be made after seeing which H paid
+  off. The agent's read exposed exactly that table, and the memo's §5.5 reasons
+  about holding period. The memo's *hurdle* is outcome-blind cost arithmetic and
+  its verdict (C — DO NOT BUILD) is independently carried by Raju 2023
+  (long near-high leg t = −0.91), the gross-alpha ≈ gross-cost identity, and the
+  short-horizon reversal literature — none of which require SWEEP_HOLDING. But
+  it cannot be certified that the memo's prose was wholly un-anchored by the
+  glimpsed numbers. Recorded as a known, un-eliminable doubt rather than a
+  false all-clear.
+
+- SCOPE. This entry records an incident as FACT; it changes no ruling and
+  authorizes nothing. `HOLD_SESS`/the 10-slot interaction remains genuinely
+  unswept and quarantined (VARIANT-A entry stands). No future holding-period
+  decision may cite this memo's §5.5 as its basis. RULING 13d is untouched.
