@@ -139,14 +139,36 @@ def stage_panel() -> None:
 
     # --- factor levels → NSE session calendar by EXACT DATE MATCH (no ffill) ---
     fac = pd.read_parquet(FACTORS_RAW)
-    # INR=X vs USDINR=X agreement halt (corr>0.99 on log returns)
-    lr_inr = np.log(fac["INR=X"]).diff()
-    lr_usdinr = np.log(fac["USDINR=X"]).diff()
-    both = pd.concat([lr_inr, lr_usdinr], axis=1).dropna()
-    fx_corr = both.iloc[:, 0].corr(both.iloc[:, 1])
-    print(f"[panel] corr(INR=X, USDINR=X) log-returns = {fx_corr:.5f} (n={len(both)})")
-    if fx_corr <= 0.99:
-        sys.exit(f"[panel] FAIL: INR=X vs USDINR=X corr {fx_corr:.5f} <= 0.99")
+    # Co-moving-series guards (src/factor_guards.py, added 2026-07-23 after the
+    # corrupted Brent/WTI bars caught in DIAG-MACROBETA-0001-FWDLOOK — a ~14%
+    # same-day decoupling that only an eyeball caught. Now structural.)
+    from src.factor_guards import (
+        FactorGuardError,
+        assert_comoving_divergence,
+        assert_return_agreement,
+    )
+    try:
+        # same quantity, two sources: must agree (pre-registered corr>0.99 halt)
+        fx_corr = assert_return_agreement(
+            fac["INR=X"], fac["USDINR=X"], "INR=X", "USDINR=X", min_corr=0.99
+        )
+        print(f"[panel] corr(INR=X, USDINR=X) log-returns = {fx_corr:.5f}")
+        # distinct but near-cointegrated grades: same-day divergence cap.
+        # Hard cap is TAIL-SCOPED (last 5 bars = the unsettled-fresh-pull
+        # zone): the dev window contains REAL >5% Brent/WTI decoupling on 30
+        # days, peaking 0.2672 on 2020-04-22 (WTI negative-price episode) —
+        # a full-history cap would reject valid data. Full series reported.
+        div = assert_comoving_divergence(
+            fac["BZ=F"], fac["CL=F"], "BZ=F", "CL=F",
+            max_abs_divergence=0.05, tail_bars=5,
+        )
+        n_hist = int((div > 0.05).sum())
+        print(
+            f"[panel] Brent/WTI divergence: full-series max {div.max():.4f}, "
+            f"{n_hist} day(s) > 5% (known-real incl. Apr-2020); tail-5 clean"
+        )
+    except FactorGuardError as e:
+        sys.exit(f"[panel] FAIL: {e}")
 
     fac_on_sess = fac.reindex(sess_idx)  # exact match; missing → NaN
     # factor overlap assertion (>=90% of NSE sessions carry each factor level)

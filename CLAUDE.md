@@ -491,6 +491,29 @@ protocol.
    (report.py promised owners a "1.5× over 30 minutes" condition **no code
    path ever evaluated**). Corollary to RULING 9: a HEAD check is not a
    formality — here the HEADS DIFFERED and the diff carried the real answer.
+10. **A property of an outcome-selected group means nothing without its rate
+   in the complement — and read the tape before reading the movers.** From
+   the 2026-07-23 gainers look (`analysis/gainers_3d_characterization.md`):
+   of 250 names, 66 rose over 3 sessions; Financials supplied the MOST
+   winners by raw count (10) yet had the LOWEST up-rate of any large sector
+   — counting winners without the control would have mislabelled it a theme.
+   Rules: (a) any "the winners share X" claim must report X's rate in BOTH
+   groups and keep only real differentials; (b) report the WASHED-OUT list
+   alongside the survivors — features equally common in losers are what stop
+   over-reading; (c) print the universe mean/median move FIRST — the same
+   look's naive story ("high-beta names on an up-tape") inverted on one
+   number: the tape was DOWN 1.3% and the gainers were LOWER-beta. Post-hoc
+   per-name "trigger" narratives stay labelled POST-HOC/UNVERIFIED. Related
+   structural guard, same session: corrupted unsettled yfinance bars printed
+   Brent −7.4% vs WTI +6.4% on the SAME day (~14% decoupling of
+   near-cointegrated grades), caught only by eyeball — `src/factor_guards.py`
+   now makes the catch structural (same-source agreement + co-moving
+   divergence caps, loud-fail), wired into `scripts/diag_macro_beta.py`.
+   The guard itself was base-rate-checked before adoption and FAILED its
+   first design: a full-history 5% cap fired on 30 REAL days (Apr-2020
+   super-contango, true Brent/WTI decoupling to 0.2672), so the hard cap is
+   TAIL-SCOPED to the unsettled fresh-pull zone and deep history is
+   report-only. A guard that rejects valid data is TRAP 6's mirror image.
 
 ## ROADMAP (the path to the fund)
 
@@ -552,7 +575,7 @@ another selection engine.
 
 `.venv`: python 3.14, pandas 3.0.3, pytest 9.1.1, pyarrow 25.0.0,
 yfinance 1.5.1 (+ openpyxl, pypdf for A1 corpus parsing). Tests:
-`.venv/bin/python -m pytest tests/ -q` (**248 passing as of 2026-07-22**).
+`.venv/bin/python -m pytest tests/ -q` (**257 passing as of 2026-07-23**).
 Data dirs (`data/sealed/`, `data/legacy_snapshot/`, `data/market/`,
 `data/derived/`, `data/reference/`, plus the bulk 52WH panel artifacts
 under `data/workspace/`) are gitignored — never push data. Remote:
