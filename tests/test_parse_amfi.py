@@ -108,7 +108,7 @@ def test_substring_matching_survives_header_drift(tmp_path, msei_header):
     matching would have silently broken on the 2018H1-2019H1 / 2021H1 files."""
     path = workbook(tmp_path, "amfi_2021H1_avg_mcap.xlsx", msei_header=msei_header)
     wide = parse_amfi.parse_file(path)
-    assert list(wide["symbol"]) == ["RELIANCE", "", "DASHCO", ""]
+    assert list(wide["symbol"]) == ["RELIANCE", "NESTLEIND", "DASHCO", ""]
     assert wide.loc[0, "avg_mcap_cr"] == pytest.approx(548701.57)
 
 
@@ -133,13 +133,71 @@ def test_missing_header_raises():
 # --- symbol convention ----------------------------------------------------
 
 
-def test_dash_sentinel_falls_back_to_bse_empty_cell_does_not(tmp_path):
-    """The as-built rank-file convention, reproduced deliberately: a "-" NSE
-    cell falls back to BSE, an EMPTY one does not (that gap is the inherited
-    defect documented in COVERAGE.md)."""
+def test_bse_fallback_fires_on_empty_cell_and_on_dash(tmp_path):
+    """THE habitat fix. Before 2026-07-22 the fallback was gated on the literal
+    "-", so an EMPTY NSE cell (every edition before 2025H2 writes empty, not
+    dashed) left the row symbol-less and structurally invisible to
+    ``snapshot_as_of``. Both spellings of "missing" must now fall back."""
     wide = parse_amfi.parse_file(workbook(tmp_path, "amfi_2022H1_avg_mcap.xlsx"))
-    assert list(wide["symbol"]) == ["RELIANCE", "", "DASHCO", ""]
-    assert list(wide["symbol_exchange"]) == ["NSE", "NSE", "BSE", "NONE"]
+    assert list(wide["symbol"]) == ["RELIANCE", "NESTLEIND", "DASHCO", ""]
+    assert list(wide["symbol_exchange"]) == ["NSE", "BSE", "BSE", "NONE"]
+    assert list(wide["symbol_recovery"]) == [
+        "NSE", "BSE_FALLBACK", "BSE_FALLBACK", "NO_TICKER"
+    ]
+
+
+def test_whitespace_only_nse_cell_counts_as_missing(tmp_path):
+    rows = [
+        (1, "Spacey Ltd", "INE001A01011", "SPACEY", 10.0, "   ", 10.0,
+         None, None, 10.0, "Small Cap"),
+    ]
+    wide = parse_amfi.parse_file(
+        workbook(tmp_path, "amfi_2019H2_avg_mcap.xlsx", rows=rows)
+    )
+    assert list(wide["symbol"]) == ["SPACEY"]
+    assert list(wide["symbol_exchange"]) == ["BSE"]
+
+
+def test_colliding_recovery_is_dropped_not_overwritten(tmp_path):
+    """Pre-committed collision rule: a recovered BSE ticker already in use in
+    the same edition is DROPPED and reported unrecoverable. Mis-attributing one
+    company's rows to another company's ticker is silent data corruption; a
+    disclosed gap is only a gap."""
+    rows = [
+        # holds the ticker legitimately, via its own NSE cell
+        (1, "Seshasayee Paper & Boards", "INE630A01011", "SESHAPAPER", 900.0,
+         "SESHAPAPER", 900.0, None, None, 900.0, "Small Cap"),
+        # second ISIN for the same name, NSE cell empty, BSE ticker collides
+        (2, "Seshasayee Paper & Boards Ltd.", "INE630A01024", "SESHAPAPER", 800.0,
+         None, None, None, None, 800.0, "Small Cap"),
+        # two blank-NSE rows fighting over one BSE ticker: both dropped
+        (3, "Roselabs Finance", "INE475C01012", "ROSELABS", 5.0,
+         None, None, None, None, 5.0, "Small Cap"),
+        (4, "Kriptol Industries", "INE477C01034", "ROSELABS", 4.0,
+         None, None, None, None, 4.0, "Small Cap"),
+    ]
+    wide = parse_amfi.parse_file(
+        workbook(tmp_path, "amfi_2020H1_avg_mcap.xlsx", rows=rows)
+    )
+    assert list(wide["symbol"]) == ["SESHAPAPER", "", "", ""]
+    assert list(wide["symbol_recovery"]) == [
+        "NSE", "DROPPED_COLLISION", "DROPPED_COLLISION", "DROPPED_COLLISION"
+    ]
+    report = parse_amfi.recovery_report({"amfi_2020H1_avg_mcap.xlsx": wide})
+    assert len(report) == 3
+    assert set(report["isin"]) == {"INE630A01024", "INE475C01012", "INE477C01034"}
+    assert report["in_band_201_1000"].eq(False).all()
+
+
+def test_rank_long_form_uses_amfi_sr_no(tmp_path):
+    """Both staging halves come out of ONE symbol derivation, so mcap_rank rows
+    must carry exactly the symbols the mcap rows carry."""
+    wide = parse_amfi.parse_file(workbook(tmp_path, "amfi_2022H1_avg_mcap.xlsx"))
+    ranks = parse_amfi.to_long_ranks(wide)
+    assert list(ranks["field"].unique()) == ["mcap_rank"]
+    assert list(ranks["value"]) == [1, 2, 3, 4]
+    assert list(ranks["symbol"]) == list(wide["symbol"])
+    assert set(ranks.columns) == set(parse_amfi.STAGING_COLUMNS)
 
 
 @CORPUS
@@ -259,6 +317,31 @@ def test_top_1000_fully_covered_every_period():
         head = parse_amfi.parse_file(path).query("sr_no <= 1000")
         assert len(head) == 1000, path.name
         assert head["avg_mcap_cr"].notna().all(), path.name
+
+
+@CORPUS
+def test_habitat_band_is_named_after_the_fix():
+    """COVERAGE guard, not a row count (TRAP 1/6). Band 201-1000 always holds
+    exactly 800 ranked rows; before the 2026-07-22 fallback fix only 690-766 of
+    them carried a symbol and the rest were dropped by ``snapshot_as_of``'s
+    ``groupby``. Post-fix every edition must name >= 794, the residue being
+    AMFI rows with no ticker on either exchange plus collision drops."""
+    for path in sorted(parse_amfi.RAW.glob("amfi_*_avg_mcap.xlsx")):
+        band = parse_amfi.parse_file(path).query("201 <= sr_no <= 1000")
+        assert len(band) == 800, path.name
+        named = int((band["symbol"] != "").sum())
+        assert named >= 794, f"{path.name}: only {named}/800 named in band"
+
+
+@CORPUS
+def test_recovered_symbols_never_collide_within_an_edition():
+    """The collision rule's whole point: no ticker may name two companies in
+    one edition, else the cross-section double-counts one and loses the other."""
+    for path in sorted(parse_amfi.RAW.glob("amfi_*_avg_mcap.xlsx")):
+        wide = parse_amfi.parse_file(path)
+        named = wide.loc[wide["symbol"] != ""]
+        dupes = named["symbol"].value_counts()
+        assert dupes.max() == 1, f"{path.name}: {list(dupes[dupes > 1].index)[:5]}"
 
 
 @CORPUS

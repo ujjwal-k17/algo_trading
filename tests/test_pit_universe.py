@@ -80,3 +80,25 @@ def test_validate_rejects_bad_schema():
 def test_empty_band_raises():
     with pytest.raises(ValueError, match="empty rank band"):
         pit_universe.universe_as_of(corpus(), "2020-02-01", (1000, 201))
+
+
+def test_never_ingested_field_raises_instead_of_returning_empty():
+    """TRAP 6 guard: a field with ZERO rows is a build defect, not an answer.
+
+    Before this guard, ``universe_as_of(store, date, "NIFTY500")`` returned []
+    on the real store — which holds no index_member rows at all — so a
+    sensitivity would have backtested an empty universe raising no error.
+    """
+    with pytest.raises(ValueError, match="ZERO rows in the store"):
+        pit_universe.universe_as_of(corpus(), "2020-01-10", "NIFTY100")
+
+    no_ranks = corpus().loc[lambda d: d["field"] != "mcap_rank"]
+    with pytest.raises(ValueError, match="ZERO rows in the store"):
+        pit_universe.universe_as_of(no_ranks, "2020-01-10", (201, 1000))
+
+
+def test_present_field_with_no_members_still_returns_empty():
+    """The guard must NOT fire on a legitimate pre-announcement/post-drop
+    state — only on a field that was never ingested at all."""
+    assert pit_universe.universe_as_of(corpus(), "2019-09-15", "NIFTY500") == []
+    assert pit_universe.universe_as_of(corpus(), "2020-03-31", "NIFTY500") == []

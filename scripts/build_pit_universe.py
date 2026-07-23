@@ -51,14 +51,54 @@ def load_staging() -> pd.DataFrame:
             sys.exit(f"{f.name}: {e}")
         print(f"  staged {f.name}: {len(df)} rows")
     merged = pd.concat(frames, ignore_index=True)
-    before = len(merged)
-    merged = merged.drop_duplicates(subset=[c for c in pit_universe.SCHEMA
-                                            if c != "source"])
-    if len(merged) < before:
-        print(f"  dropped {before - len(merged)} duplicate rows")
+    merged = deduplicate(merged)
     return merged.sort_values(
         ["field", "effective_date", "announce_date", "symbol"]
     ).reset_index(drop=True)
+
+
+def deduplicate(merged: pd.DataFrame) -> pd.DataFrame:
+    """Collapse identical assertions, and SAY what was collapsed (TRAP 6).
+
+    The key is ``(symbol, field, effective_date, announce_date, value)`` —
+    deliberately not ``isin``, because the store's identity is the symbol. That
+    is safe for a NAMED symbol (two rows agreeing on all five fields are the
+    same assertion) but NOT for a blank one: two DIFFERENT companies with no
+    ticker and the same rounded market cap collapse into one row. Before the
+    2026-07-22 habitat fix that silently destroyed 22,710 rows and printed only
+    a bare count, which nothing read.
+
+    So: a dropped row with a named symbol is a HARD STOP (it means two symbols
+    genuinely disagree about what is being asserted, or the staging halves have
+    drifted), while dropped blank-symbol rows are reported per field with their
+    distinct-ISIN count so the loss is disclosed rather than inferred.
+    """
+    key = [c for c in pit_universe.SCHEMA if c != "source"]
+    dropped = merged.loc[merged.duplicated(subset=key, keep="first")]
+    out = merged.drop_duplicates(subset=key)
+    if dropped.empty:
+        print("  de-dup: no duplicate rows")
+        return out
+    named = dropped.loc[dropped["symbol"].notna() & (dropped["symbol"] != "")]
+    blank = dropped.loc[~dropped.index.isin(named.index)]
+    print(f"  de-dup: dropped {len(dropped)} duplicate rows "
+          f"({len(named)} named-symbol, {len(blank)} blank-symbol)")
+    for field, grp in blank.groupby("field"):
+        isins = grp["isin"].nunique() if "isin" in grp.columns else "n/a"
+        print(f"    WARNING blank-symbol rows lost, {field}: {len(grp)} rows, "
+              f"{isins} distinct ISINs — different companies sharing a rounded "
+              f"value collapse under a NA key (see analysis/"
+              f"habitat_defect_verification.md §6)")
+    if not named.empty:
+        sample = named.head(5).to_string(index=False)
+        sys.exit(
+            f"build_pit_universe: {len(named)} NAMED-symbol rows were dropped as "
+            f"duplicates. That is never benign — two staged rows assert the same "
+            f"(symbol, field, effective_date, announce_date, value) from "
+            f"different sources, or the staging halves have drifted apart.\n"
+            f"{sample}"
+        )
+    return out
 
 
 def half_year(ts: pd.Timestamp) -> str:

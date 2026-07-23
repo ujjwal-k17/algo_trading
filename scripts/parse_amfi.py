@@ -24,8 +24,15 @@ Conventions reproduced EXACTLY from the in-use rank staging file
   row in ``announce_basis``. AMFI does not publish a timestamp; this lag is the
   governing PIT visibility assumption for the whole store.
 - rows with a null ``Sr. No.`` are trailer/notes rows and are dropped.
-- ``symbol`` is the NSE ticker, blank when AMFI gives none, with a BSE fallback
-  that fires only on the literal "-" sentinel (see ``derive_symbol``).
+- ``symbol`` is the NSE ticker, with a BSE fallback whenever AMFI leaves the
+  NSE cell missing (NaN, empty or the "-" sentinel), and blank only when
+  neither exchange gives a ticker (see ``derive_symbol``).
+
+Since the 2026-07-22 habitat fix this script is also the generator of the RANK
+staging half (``amfi_mcap_rank.csv``, field ``mcap_rank`` = AMFI's ``Sr. No.``).
+The original A1 parser was never persisted; regenerating both halves here is
+what keeps them in ONE symbol space, which ``verify_against_ranks`` asserts
+row-for-row against the previous rank file before it is overwritten.
 
 Header text drifts across editions ("MSE Symbol" vs "MSEI Symbol", spacing in
 the mcap headers), so every column is matched by SUBSTRING and asserted unique.
@@ -44,6 +51,11 @@ RAW = REPO / "data" / "reference" / "pit" / "raw" / "amfi"
 STAGING = REPO / "data" / "reference" / "pit" / "staging"
 OUT = STAGING / "amfi_avg_mcap.csv"
 RANK_STAGING = STAGING / "amfi_mcap_rank.csv"
+# NOT under staging/ — build_pit_universe.py globs staging/*.csv and this is a
+# diagnostic, not a store half.
+RECOVERY_REPORT = REPO / "data" / "reference" / "pit" / "symbol_recovery_report.csv"
+
+RANK_FIELD = "mcap_rank"
 
 # AMFI publishes no release timestamp. period_end + 25d is the pre-committed
 # ASSUMPTION governing PIT visibility (plan_52wh.md A1); every row carries the
@@ -142,36 +154,67 @@ def _clean_text(series: pd.Series) -> pd.Series:
 
 
 def derive_symbol(nse_raw: pd.Series, bse_raw: pd.Series) -> pd.DataFrame:
-    """(symbol, symbol_exchange) reproducing the rank staging file's convention.
+    """(symbol, symbol_exchange) for one AMFI edition, BSE fallback FIXED.
 
-    The as-built rule, recovered from ``amfi_mcap_rank.csv`` (the original A1
-    parser was never persisted) and asserted by ``verify_against_ranks``:
+    The rule, as of the 2026-07-22 habitat fix:
 
-    - the NSE cell is used whenever it is not the literal "-" sentinel; a cell
-      that is merely EMPTY yields a blank symbol tagged ``NSE`` — the BSE
-      fallback does NOT fire;
-    - on the "-" sentinel the BSE ticker is used (``BSE``), or the symbol is
-      blank and tagged ``NONE`` if BSE is "-" too.
+    - the NSE cell is used whenever AMFI supplies one (``NSE``);
+    - when the NSE cell is MISSING — NaN, empty/whitespace, or the literal "-"
+      sentinel — the BSE ticker is used instead (``BSE``);
+    - when neither exchange supplies a ticker the symbol is blank (``NONE``).
 
-    That asymmetry is a DEFECT inherited from the original ingest, not a
-    deliberate choice: the empty-cell case leaves 50,505 rows (2017H2-2025H1)
-    symbol-less even where AMFI supplied a BSE ticker. It is reproduced here on
-    purpose so the mcap rows and the in-use rank rows share one symbol space;
-    correcting it is a separate change that must rebuild BOTH files.
-    See data/reference/pit/COVERAGE.md §"Known defects".
+    THE FIX. The as-built A1 convention gated the fallback on ``dashed`` alone,
+    i.e. the literal "-". Editions before 2025H2 leave the cell EMPTY rather
+    than dashed, so the fallback literally never fired in any of the 16
+    editions 2017H2-2025H1: 50,505 rank rows carried a blank symbol despite
+    AMFI supplying a BSE ticker, and ``pit_universe.snapshot_as_of``'s
+    ``groupby("symbol")`` silently drops NA keys, so those names were invisible
+    to every habitat query. See ``analysis/habitat_defect_verification.md`` and
+    data/reference/pit/COVERAGE.md §6.7.
+
+    COLLISION RULE (pre-committed, not negotiable at run time). A recovered BSE
+    ticker that is ALREADY in use in the same edition — either by a name whose
+    NSE cell is populated, or by another recovered row — is DROPPED and the row
+    is left blank/``NONE``, i.e. reported as unrecoverable. Never overwritten,
+    never merged, never heuristically disambiguated: attributing one company's
+    rows to another company's ticker is silent data corruption, whereas a
+    disclosed gap is merely a gap. The dropped rows are emitted to
+    ``data/reference/pit/symbol_recovery_report.csv``.
+
+    Returns columns ``symbol``, ``symbol_exchange`` and the outcome-blind
+    diagnostic ``symbol_recovery`` (one of ``NSE``, ``BSE_FALLBACK``,
+    ``DROPPED_COLLISION``, ``NO_TICKER``), which is NOT a store field.
     """
     nse = nse_raw.astype("string").str.strip()
     bse = bse_raw.astype("string").str.strip()
-    # .fillna(False) matters: an EMPTY NSE cell must not trigger the fallback.
-    dashed = nse.eq(MISSING_SENTINEL).fillna(False).astype(bool)
+    # THE FIX: an EMPTY / whitespace / NaN cell counts as missing, exactly like
+    # the "-" sentinel. The old condition was `nse.eq(MISSING_SENTINEL)`, which
+    # never fires on an empty cell.
+    missing = nse.isna() | nse.eq("") | nse.eq(MISSING_SENTINEL)
 
-    symbol = nse.fillna("").mask(dashed, "")
+    symbol = nse.fillna("").mask(missing, "")
+    bse_ok = missing & bse.notna() & bse.ne(MISSING_SENTINEL) & bse.ne("")
+
+    # Collision guard, evaluated over the whole edition.
+    taken = set(symbol.loc[~missing].tolist())
+    candidate = bse.where(bse_ok)
+    dup_within = candidate.map(candidate.value_counts()).fillna(0) > 1
+    collision = bse_ok & (candidate.isin(taken) | dup_within)
+    recovered = bse_ok & ~collision
+
+    symbol = symbol.mask(recovered, bse)
     exchange = pd.Series("NSE", index=nse.index, dtype="object")
+    exchange = exchange.mask(missing, "NONE").mask(recovered, "BSE")
 
-    bse_ok = dashed & bse.notna() & bse.ne(MISSING_SENTINEL) & bse.ne("")
-    symbol = symbol.mask(bse_ok, bse)
-    exchange = exchange.mask(dashed, "NONE").mask(bse_ok, "BSE")
-    return pd.DataFrame({"symbol": symbol, "symbol_exchange": exchange})
+    recovery = pd.Series("NSE", index=nse.index, dtype="object")
+    recovery = (
+        recovery.mask(missing, "NO_TICKER")
+        .mask(collision, "DROPPED_COLLISION")
+        .mask(recovered, "BSE_FALLBACK")
+    )
+    return pd.DataFrame(
+        {"symbol": symbol, "symbol_exchange": exchange, "symbol_recovery": recovery}
+    )
 
 
 def parse_file(path: Path) -> pd.DataFrame:
@@ -197,6 +240,8 @@ def parse_file(path: Path) -> pd.DataFrame:
         {
             "symbol": symbols["symbol"],
             "symbol_exchange": symbols["symbol_exchange"],
+            "symbol_recovery": symbols["symbol_recovery"],
+            "bse_symbol": _clean_text(raw[find_column(raw, BSE_SYMBOL_HEADER)]),
             "sr_no": sr_no.astype("int64"),
             "isin": _clean_text(raw[find_column(raw, ISIN_HEADER)]),
             "company_name": _clean_text(raw[find_column(raw, NAME_HEADER)]),
@@ -233,37 +278,107 @@ def to_long(wide: pd.DataFrame) -> pd.DataFrame:
     return pd.concat(frames, ignore_index=True)
 
 
-def verify_against_ranks(wide_by_file: dict[str, pd.DataFrame]) -> None:
-    """Assert the parsed symbol/isin space matches the in-use rank staging.
+def to_long_ranks(wide: pd.DataFrame) -> pd.DataFrame:
+    """Wide per-company frame -> ``mcap_rank`` long rows (value = AMFI Sr. No.).
 
-    The rank rows are canonical and must not be rewritten, so the new mcap rows
-    have to land in exactly the same (source_file, isin, symbol) space or the
-    two halves of the store would disagree about what a symbol is.
+    AMFI's ``Sr. No.`` IS its all-exchange market-cap rank, so it needs no
+    derivation; this exists so BOTH staging halves come out of ONE symbol
+    derivation (``derive_symbol``) instead of two parsers that can drift.
+    """
+    part = wide.copy()
+    part["field"] = RANK_FIELD
+    part["value"] = part["sr_no"].astype("int64")
+    return part.loc[:, STAGING_COLUMNS]
+
+
+def recovery_report(wide_by_file: dict[str, pd.DataFrame]) -> pd.DataFrame:
+    """Every row the BSE fallback could NOT resolve, with the reason.
+
+    Two disjoint reasons, both meaning "no symbol": ``DROPPED_COLLISION`` (a
+    usable BSE ticker existed but was already taken in that edition — the
+    pre-committed rule drops rather than guesses) and ``NO_TICKER`` (AMFI gave
+    neither exchange a ticker). Written out so the gap is disclosed rather than
+    inferred from a row count.
+    """
+    frames = []
+    for source_file, wide in wide_by_file.items():
+        bad = wide.loc[wide["symbol_recovery"].isin(("DROPPED_COLLISION", "NO_TICKER"))]
+        if bad.empty:
+            continue
+        frames.append(
+            bad.loc[
+                :,
+                [
+                    "source_file",
+                    "effective_date",
+                    "sr_no",
+                    "isin",
+                    "company_name",
+                    "bse_symbol",
+                    "symbol_recovery",
+                ],
+            ]
+        )
+    if not frames:
+        return pd.DataFrame(
+            columns=[
+                "source_file", "effective_date", "sr_no", "isin",
+                "company_name", "bse_symbol", "symbol_recovery",
+            ]
+        )
+    out = pd.concat(frames, ignore_index=True)
+    out["in_band_201_1000"] = out["sr_no"].between(201, 1000)
+    return out.sort_values(["source_file", "sr_no"]).reset_index(drop=True)
+
+
+def verify_against_ranks(wide_by_file: dict[str, pd.DataFrame]) -> None:
+    """Assert the newly parsed symbol space is the PREVIOUS one plus the fix.
+
+    Both staging halves are now generated here from one ``derive_symbol`` call
+    per edition, so they share a symbol space by construction. What still needs
+    asserting is that the habitat fix is CONFINED to the rows it claims: it may
+    fill a blank symbol (the BSE fallback firing at last) and it may blank a
+    symbol (the collision rule dropping an ambiguous recovery), but it must
+    NEVER rewrite one non-blank ticker into a different non-blank ticker, and it
+    must not disturb isin or the Sr. No. ordering.
+
+    Compares against the rank staging file as it exists on disk, so it must run
+    BEFORE that file is overwritten.
     """
     if not RANK_STAGING.exists():
         print(f"  (skipped: {RANK_STAGING.name} absent)")
         return
     ranks = pd.read_csv(RANK_STAGING, keep_default_na=False, dtype=str)
-    problems = 0
+    problems = filled = blanked = 0
     for source_file, wide in wide_by_file.items():
         got = ranks.loc[ranks["source_file"] == source_file]
         if len(got) != len(wide):
             print(f"  MISMATCH {source_file}: rank rows {len(got)} vs mcap {len(wide)}")
             problems += 1
             continue
-        # The rank file kept raw cell whitespace ("NA          "); this parser
-        # strips it, so compare stripped. That is the ONE deliberate divergence
-        # (documented in COVERAGE.md); joins on isin must strip both sides.
-        for col in ("symbol", "isin", "symbol_exchange"):
-            diff = (
-                got[col].str.strip().to_numpy() != wide[col].astype(str).to_numpy()
-            ).sum()
-            if diff:
-                print(f"  MISMATCH {source_file}.{col}: {diff} rows differ")
-                problems += 1
+        # The old rank file kept raw cell whitespace ("NA          "); this
+        # parser strips it, so compare stripped. That is the ONE deliberate
+        # divergence (documented in COVERAGE.md).
+        if (got["isin"].str.strip().to_numpy() != wide["isin"].astype(str).to_numpy()).any():
+            print(f"  MISMATCH {source_file}.isin: rows differ")
+            problems += 1
         if (got["value"].astype(int).to_numpy() != wide["sr_no"].to_numpy()).any():
             print(f"  MISMATCH {source_file}: Sr. No. ordering differs from ranks")
             problems += 1
+        old = got["symbol"].str.strip().to_numpy()
+        new = wide["symbol"].astype(str).to_numpy()
+        changed = old != new
+        filled += int((changed & (old == "")).sum())
+        blanked += int((changed & (new == "")).sum())
+        rewritten = changed & (old != "") & (new != "")
+        if rewritten.any():
+            print(
+                f"  MISMATCH {source_file}: {int(rewritten.sum())} non-blank "
+                f"symbols REWRITTEN to a different non-blank symbol"
+            )
+            problems += 1
+    print(f"  symbols filled by the fixed fallback: {filled}")
+    print(f"  symbols blanked by the collision rule: {blanked}")
     print("  rank-staging agreement: OK" if not problems else f"  {problems} MISMATCHES")
 
 
@@ -332,26 +447,56 @@ def main() -> None:
     if not files:
         sys.exit(f"no AMFI xlsx files in {RAW}")
     wide_by_file = {}
-    frames = []
+    mcap_frames, rank_frames = [], []
     for path in files:
         wide = parse_file(path)
         wide_by_file[path.name] = wide
-        frames.append(to_long(wide))
+        mcap_frames.append(to_long(wide))
+        rank_frames.append(to_long_ranks(wide))
         print(
             f"  {path.name}: {len(wide)} companies, "
-            f"avg_mcap_cr nulls {int(wide['avg_mcap_cr'].isna().sum())}"
+            f"avg_mcap_cr nulls {int(wide['avg_mcap_cr'].isna().sum())}, "
+            f"blank symbols {int((wide['symbol'] == '').sum())}"
         )
-    long = pd.concat(frames, ignore_index=True).sort_values(
+
+    # Runs BEFORE the rank file is overwritten — it reads the previous one.
+    print("\n=== provenance check ===")
+    verify_against_ranks(wide_by_file)
+
+    long = pd.concat(mcap_frames, ignore_index=True).sort_values(
         ["field", "effective_date", "symbol"], kind="stable"
     ).reset_index(drop=True)
+    ranks = pd.concat(rank_frames, ignore_index=True).sort_values(
+        ["effective_date", "value"], kind="stable"
+    ).reset_index(drop=True)
+
+    # TRAP 6: assert an EXPECTED VOLUME, never a non-empty row count. One rank
+    # row per company per edition, three mcap fields per company at most.
+    expected_ranks = sum(len(w) for w in wide_by_file.values())
+    if len(ranks) != expected_ranks:
+        sys.exit(f"rank rows {len(ranks)} != companies parsed {expected_ranks}")
+    if len(long) > 3 * expected_ranks:
+        sys.exit(f"mcap rows {len(long)} exceed 3 x {expected_ranks}")
 
     STAGING.mkdir(parents=True, exist_ok=True)
     long.to_csv(OUT, index=False)
+    ranks.to_csv(RANK_STAGING, index=False)
     print(f"\nwrote {len(long)} rows -> {OUT}")
+    print(f"wrote {len(ranks)} rows -> {RANK_STAGING}")
     print(long["field"].value_counts().to_string())
 
-    print("\n=== provenance check ===")
-    verify_against_ranks(wide_by_file)
+    report = recovery_report(wide_by_file)
+    RECOVERY_REPORT.parent.mkdir(parents=True, exist_ok=True)
+    report.to_csv(RECOVERY_REPORT, index=False)
+    counts = report["symbol_recovery"].value_counts().to_dict()
+    band = report.loc[report["in_band_201_1000"]] if len(report) else report
+    print(
+        f"\nwrote {len(report)} unrecoverable rows -> {RECOVERY_REPORT}\n"
+        f"  all ranks: {counts}\n"
+        f"  band 201-1000: "
+        f"{band['symbol_recovery'].value_counts().to_dict() if len(band) else {}}"
+    )
+
     exchange_identity_report(wide_by_file)
     quality_report(wide_by_file)
     monotonicity_report(wide_by_file)

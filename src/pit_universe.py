@@ -84,6 +84,27 @@ def snapshot_as_of(frame: pd.DataFrame, date, field: str) -> pd.Series:
     return last.set_index("symbol")["value"].rename(field)
 
 
+def _require_field(frame: pd.DataFrame, field: str) -> None:
+    """Hard stop when ``field`` was never ingested (TRAP 6: silence, not error).
+
+    A store missing the field entirely is a BUILD defect, and every as-of query
+    against it returns an empty universe with no error — which a backtest reads
+    as a valid answer. Distinct from a field that exists but has no member as of
+    a given date, which is a legitimate pre-announcement/post-drop state and
+    still returns ``[]``.
+    """
+    if "field" not in frame.columns or (frame["field"] == field).any():
+        return
+    present = sorted(set(frame["field"].dropna())) if len(frame) else []
+    raise ValueError(
+        f"pit_universe: field {field!r} has ZERO rows in the store — it was "
+        f"never ingested, so every as-of query would silently return an empty "
+        f"universe. Present fields: {present}. "
+        f"(index_member:* requires the NSE index-change releases to be parsed "
+        f"into the store; see data/reference/pit/COVERAGE.md §7.)"
+    )
+
+
 def universe_as_of(frame: pd.DataFrame, date, band) -> list[str]:
     """Symbols in ``band`` as of ``date`` (announce- and effective-visible only).
 
@@ -91,6 +112,9 @@ def universe_as_of(frame: pd.DataFrame, date, band) -> list[str]:
     - ``(lo, hi)`` or ``"201-1000"`` — inclusive ``mcap_rank`` range.
     - an index name, e.g. ``"NIFTY500"`` — membership via the
       ``index_member:<NAME>`` field (latest visible row must be truthy).
+
+    Raises if the backing field is absent from the store entirely; an empty
+    result for a field that IS present is legitimate and returns ``[]``.
     """
     if isinstance(band, (tuple, list)):
         lo, hi = int(band[0]), int(band[1])
@@ -98,7 +122,9 @@ def universe_as_of(frame: pd.DataFrame, date, band) -> list[str]:
     m = _RANK_BAND_RE.match(str(band))
     if m:
         return _rank_band(frame, date, int(m.group(1)), int(m.group(2)))
-    snap = snapshot_as_of(frame, date, f"index_member:{band}")
+    field = f"index_member:{band}"
+    _require_field(frame, field)
+    snap = snapshot_as_of(frame, date, field)
     member = pd.to_numeric(snap, errors="raise") == 1
     return sorted(snap.index[member])
 
@@ -106,6 +132,7 @@ def universe_as_of(frame: pd.DataFrame, date, band) -> list[str]:
 def _rank_band(frame: pd.DataFrame, date, lo: int, hi: int) -> list[str]:
     if lo > hi:
         raise ValueError(f"pit_universe: empty rank band {lo}-{hi}")
+    _require_field(frame, _RANK_FIELD)
     snap = pd.to_numeric(snapshot_as_of(frame, date, _RANK_FIELD), errors="raise")
     return sorted(snap.index[(snap >= lo) & (snap <= hi)])
 
