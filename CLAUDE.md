@@ -335,8 +335,11 @@ protocol.
   2026-07-19 recovered 113 of the 215 yfinance-unservable names, old-label
   series truncated at rename effective date to prevent dual-label
   double-counting), split spot-checks passed. RESIDUAL CAVEAT: 102/1,412
-  (7.2%) still unservable, skewed toward delistings — the C1 write-up must
-  argue the survivorship hole's direction (details in `plan_52wh.md` A4).
+  (7.2%) unservable in the PRE-FIX panel, skewed toward delistings — the C1
+  write-up must argue the survivorship hole's direction (details in
+  `plan_52wh.md` A4). Post habitat fix the fetch list is **1,600** under the
+  §8 FETCH-AND-ALLOW-TO-FAIL rule (~250 unservable estimated; the panel
+  rebuild measures the real count in `price_panel_missing.txt`).
 - Open unknowns (was five, then four, now **THREE** — all three scoped
   2026-07-20, one closed):
   - **Exchange filing-timestamp corpus — SCOPED, blocked on a ToU ruling.**
@@ -377,7 +380,8 @@ protocol.
   CLOSED 2026-07-20: **absolute market cap in the PIT store** — the raw AMFI
   xlsx corpus had the columns all along (the loss was at the normalization
   step, not download), so it was a re-parse. `scripts/parse_amfi.py` →
-  `staging/amfi_avg_mcap.csv`; store now 274,966 rows / 4 fields.
+  `staging/amfi_avg_mcap.csv`; store now 297,515 rows / 4 fields (post
+  habitat-fix rebuild 2026-07-22).
   `avg_mcap_cr` is the **unweighted mean of available per-exchange legs**
   (NOT an NSE cap) and a **6-month DAILY AVERAGE**, so an MW book weights by
   prior-half-year size, not rebalance-date cap — both belong in any MW
@@ -402,20 +406,25 @@ protocol.
   Datafeed)` surfaced INDEPENDENTLY in both research passes** as an
   authorised vendor for BSE announcements AND MCX — one enquiry could
   dissolve both problems with a licence attached. Belongs in `DECISIONS.md`.
-- **OPEN OPERATOR DECISION 2 — the inherited habitat defect (gates C1
-  attempt 2).** The A1 parser's BSE-symbol fallback fired only on the `-`
-  sentinel, never on an empty cell, so before 2025H2 it effectively never
-  fired: **50,505 rank rows carry a blank symbol despite AMFI supplying a BSE
-  ticker**, and blank-symbol rows are invisible to `snapshot_as_of` (groupby
-  drops NaN). The 201–1000 habitat therefore returns **719 names instead of
-  ~800** — every 52WH result to date ran on a habitat ~10% narrower than the
-  spec says, and those names never reached the price-panel fetch list.
-  `parse_amfi` reproduces the defect EXACTLY (asserted row-for-row) so both
-  staging halves share one symbol space. Fixing it means rebuilding both
-  staging files plus a yfinance refetch and changes every 52WH number to
-  date — **so it lands BEFORE C1 attempt 2, not after.** Also corrected:
-  COVERAGE.md §6.2 claimed 100% top-1000 NSE-symbol coverage; it is
-  88.7%–96.9%, same root cause (empty cell vs `-` sentinel).
+- **OPERATOR DECISION 2 — the inherited habitat defect: RESOLVED.** Fixed
+  2026-07-22; operator-approved and committed 2026-07-23 (`d4092ca`). Report
+  of record: `analysis/habitat_fix_report.md` (verification memo:
+  `analysis/habitat_defect_verification.md`). The A1 parser's BSE-symbol
+  fallback fired only on the `-` sentinel, never on an empty cell, so it
+  fired ZERO times across 2017H2–2025H1 and 50,505 rank rows carried a blank
+  symbol, invisible to `snapshot_as_of` (groupby drops NaN); the 201–1000
+  habitat returned 719 names instead of ~800. Post-fix: NaN/empty/whitespace/
+  `-` all trigger the fallback; band named count **794–799 of 800** every
+  edition; store rebuilt at **297,515 rows**; pre-committed collision rule
+  (ambiguous recovered ticker = DROPPED, disclosed — 74 rows, 5 in band).
+  HONEST SIZING: ~73% of recovered names are BSE-primary; genuinely
+  NSE-tradeable recovery is **8–26 names/edition (1.1–3.7%)**, not ~10%.
+  **COVERAGE.md §8 fetch rule (operator-approved 2026-07-23): FETCH AND
+  ALLOW TO FAIL** — BSE-tagged symbols are NOT excluded at fetch time; list
+  grows 1,412 → 1,600 and unservability is MEASURED, not assumed (TRAP 4).
+  Also corrected: COVERAGE.md §6.2 claimed 100% top-1000 NSE-symbol
+  coverage; it is 88.7%–96.9%, same root cause. Every pre-fix 52WH number
+  ran on the narrow habitat; **C1 ATTEMPT 2 authorization is still OPEN.**
 
 ## TRAPS (paid for in real trials — do not re-learn these)
 
@@ -541,13 +550,15 @@ Phase 2 — Tier 2 pipeline (parallel):
    that is the protocol working. SPA gates every verdict (RULING 7).
 7. **Immediate decisions queued for the operator** (as of 2026-07-20):
    (a) the **DSR reporting band** (RULING 7, proposed 0.35/0.50/0.70);
-   (b) the **habitat defect fix** — gates C1 ATTEMPT 2, since a panel rebuild
-   would otherwise bake in the same ~10% narrow habitat (see CURRENT STATE,
-   OPEN OPERATOR DECISION 2);
-   (c) **C1 ATTEMPT 2 authorization** — rebuild the panel with the quorum
-   filter, then a new `C1-52WH-0002` row; expected gain ~2 extra years of
-   walk-forward (from ~2016 vs 2018-04) and a clean 2018-2020 crash leg.
-   **Sequence (b) before (c)** or the attempt inherits a known defect;
+   (b) ~~the **habitat defect fix**~~ **DONE** — fixed 2026-07-22,
+   operator-approved + committed 2026-07-23 (`d4092ca`); see CURRENT STATE
+   (OPERATOR DECISION 2: RESOLVED) and `analysis/habitat_fix_report.md`;
+   (c) **C1 ATTEMPT 2 authorization — STILL OPEN.** The panel rebuild
+   (quorum filter, fixed habitat, §8 fetch-and-allow-to-fail rule) is data
+   groundwork and proceeds without it, but a new `C1-52WH-0002` register row
+   and any outcome contact require explicit authorization; expected gain ~2
+   extra years of walk-forward (from ~2016 vs 2018-04) and a clean 2018-2020
+   crash leg. (b) landed before (c), as sequenced;
    (d) the **combined exchange ToU ruling** (OPEN OPERATOR DECISION 1) —
    gates all filing work, SRA Stage 2 and PEAD's CAR study;
    (e) the **MCX depth spike** — half a day, gates AG-01's data plan;
