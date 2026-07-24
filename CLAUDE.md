@@ -184,7 +184,8 @@ protocol.
   doctrine (below) · 8 unlogged rec = DEFAULT_EXECUTE · 9 clone-derived claims
   about production require a HEAD check · 10 Tier 1 OHLC ingest quality gate ·
   11 SPEC-SRA-01 killed · 12 SPEC-AG-01 demoted + MCX spike re-scoped ·
-  13 microstructure diagnostic door (opening-bar volume share).
+  13 microstructure diagnostic door (opening-bar volume share) ·
+  14 SPEC-52WH-01 is a composable screen, not a standalone book.
   Plus two non-ruling FACT entries headed **VERIFIED AT PRODUCTION HEAD**
   (2026-07-20 vision fabrication; 2026-07-22 both volume projections).
   **When citing a ruling, read `DECISIONS.md` — not this list.** It has run
@@ -326,8 +327,23 @@ protocol.
   the opening leg of the 2018-2020 drawdown the spec requires). Register row
   `C1-52WH-0001-DEFECT`; the trial is spent, not reclaimed. Fixed:
   `drop_non_trading_dates` quorum filter + a signal-starvation hard stop in
-  `backtest_52wh`. **Next 52WH step: C1 ATTEMPT 2 — rebuild the panel, then a
-  NEW `C1-52WH-0002` row (NOT yet authorized).** Key facts:
+  `backtest_52wh`. **C1 ATTEMPT 2 RUN 2026-07-24 — `C1-52WH-0002` SURVIVES**
+  (operator-authorized; prereg commit `231aa9e`): screened net IR +0.449,
+  increment +0.200, SPA p 0.024, DSR 0.038 (report-only, RULING 7),
+  turnover 76.8%/yr one-way; 26 rebalances 2018-03-28→2024-06-28, ranked
+  609–715 at EVERY one (attempt-1 failure signature absent). Walk-forward
+  starts 2018-03, NOT ~2016 — the PIT announce-safe floor (2018-01-25)
+  binds, not the signal; the roadmap's "~2 extra years" expectation was
+  wrong. **Q2 sensitivity battery run same day (`C1-52WH-0003..0006`, one
+  pre-committed delta each): slippage 4× SURVIVES (+0.193, p 0.027);
+  screen depth Q1,Q2 SURVIVES and is the strongest config (+0.375,
+  p 0.009, but turnover 111.5%/yr); half-yearly rebalance SURVIVES
+  (+0.184, p 0.030 at only 58.3%/yr — the composable-layer sweet spot);
+  unranked-policy drop is DEAD (+0.128, SPA p 0.169 > 0.10) — the
+  increment's significance RIDES ON the unranked-name policy, a disclosed
+  fragility any host-spec must pre-commit and argue.** Family framing now
+  RULING 14: composable screen, no standalone slot, Phase D question =
+  "does the screen add net IR to the host." Key facts:
   PIT habitat reconstructable from announce-safe **2018-01-25** (AMFI lists
   18/18 periods 2017H2→2026H1, zero gaps; announce = period_end + 25d
   ASSUMED, flagged per row; F&O fallback never triggers pre-cutoff);
@@ -424,7 +440,8 @@ protocol.
   grows 1,412 → 1,600 and unservability is MEASURED, not assumed (TRAP 4).
   Also corrected: COVERAGE.md §6.2 claimed 100% top-1000 NSE-symbol
   coverage; it is 88.7%–96.9%, same root cause. Every pre-fix 52WH number
-  ran on the narrow habitat; **C1 ATTEMPT 2 authorization is still OPEN.**
+  ran on the narrow habitat; **C1 ATTEMPT 2 was authorized and RUN 2026-07-24
+  on the fixed panel — SURVIVES (see the 52WH block above and RULING 14).**
 
 ## TRAPS (paid for in real trials — do not re-learn these)
 
@@ -553,12 +570,13 @@ Phase 2 — Tier 2 pipeline (parallel):
    (b) ~~the **habitat defect fix**~~ **DONE** — fixed 2026-07-22,
    operator-approved + committed 2026-07-23 (`d4092ca`); see CURRENT STATE
    (OPERATOR DECISION 2: RESOLVED) and `analysis/habitat_fix_report.md`;
-   (c) **C1 ATTEMPT 2 authorization — STILL OPEN.** The panel rebuild
-   (quorum filter, fixed habitat, §8 fetch-and-allow-to-fail rule) is data
-   groundwork and proceeds without it, but a new `C1-52WH-0002` register row
-   and any outcome contact require explicit authorization; expected gain ~2
-   extra years of walk-forward (from ~2016 vs 2018-04) and a clean 2018-2020
-   crash leg. (b) landed before (c), as sequenced;
+   (c) ~~**C1 ATTEMPT 2 authorization**~~ **DONE** — authorized and RUN
+   2026-07-24: `C1-52WH-0002` SURVIVES + Q2 battery `0003..0006` (3 survive,
+   unranked-drop DEAD); family reframed per RULING 14 (composable screen).
+   NOTE the "~2 extra years" expectation was WRONG — the PIT announce-safe
+   floor (2018-01-25) binds, walk-forward starts 2018-03; the real gain was
+   ranked coverage at the early rebalances (609+ everywhere vs 0×3).
+   (b) landed before (c), as sequenced;
    (d) the **combined exchange ToU ruling** (OPEN OPERATOR DECISION 1) —
    gates all filing work, SRA Stage 2 and PEAD's CAR study;
    (e) the **MCX depth spike** — half a day, gates AG-01's data plan;

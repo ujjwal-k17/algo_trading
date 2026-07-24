@@ -1146,3 +1146,44 @@ permits cloning); production HEAD re-read after the clone and UNCHANGED.
   authorizes nothing. `HOLD_SESS`/the 10-slot interaction remains genuinely
   unswept and quarantined (VARIANT-A entry stands). No future holding-period
   decision may cite this memo's §5.5 as its basis. RULING 13d is untouched.
+
+## 2026-07-24 — RULING 14: SPEC-52WH-01 is a COMPOSABLE SCREEN, not a standalone book
+
+- **RULING (operator, 2026-07-24).** The 52WH family's product is the negative
+  screen — the never-hold-far-from-high exclusion layer — not the screened
+  band book itself. The family will NOT seek a shadow slot as a standalone
+  strategy. Its Phase D sealed-test question, when a slot opens and a host
+  family exists, is "does the screen add net IR to the HOST book," not "is
+  the screened band book a fund candidate."
+
+- FACT — three independent lines converge on this framing:
+  (i) the family's own cited prior (Raju 2023): the long leg near 52-week
+  highs does NOT beat the index in any construction tested (Q5 t = −0.91);
+  the documented edge is the exclusion.
+  (ii) C1-52WH-0002 (SURVIVES, 2026-07-24): the value sits in the INCREMENT
+  (+0.200 net IR screened-vs-unscreened, SPA p 0.024), while the screened
+  book's own profile (−58.34% maxDD, −1.50 skew) is "long the midcap band,
+  slightly cleaned" — not a fund product without the spec's mandatory regime
+  overlay, which C1 deliberately did not include.
+  (iii) queue arithmetic: both shadow slots are held (QFM, PEAD) with AG-01
+  queued; a standalone 52WH could not reach Phase D for multiple gates,
+  whereas a composable layer is tested inside its host's trials and needs no
+  slot of its own now.
+
+- FACT — the candidate hosts (QFM, PEAD) are blocked on the fundamentals
+  corpus (procurement enquiries: Bloomberg / Accord Fintech / CMIE, see
+  `analysis/bloomberg_pit_verification.md`). This ruling therefore RAISES the
+  value of those enquiries: a proven increment is waiting for a host.
+
+- ASSUMPTION (disclosed) — the C1 evidence is on an EW band book; transfer of
+  the increment to a differently-constructed host book is NOT automatic. The
+  Q2 sensitivity battery (C1-52WH-0003..0006, pre-registered 2026-07-24)
+  de-risks exactly this: screen depth (Q1,Q2), slower rebalance (H), friction
+  stress, and unranked-policy. Host-specific evidence remains the host
+  family's trial to produce.
+
+- SCOPE. This ruling changes the family's FRAMING and its Phase D question.
+  It does not spend a trial, does not touch a slot, does not amend the frozen
+  spec (the spec already frames the screen as composable — this ruling adopts
+  that framing as binding), and does not authorize any outcome contact beyond
+  the four pre-registered sensitivity rows.
